@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 
 ##设置模型参数
 batch_size=16
-steps_per_epoch=6
-epochs=1
+steps_per_epoch=6522
+epochs=100
 
 from numpy.random import seed
 seed(1)
@@ -67,7 +67,7 @@ verbose=1,
 min_lr=1e-5)
 
 history=model.fit_generator(train_gen,steps_per_epoch=steps_per_epoch,epochs=epochs,
-callbacks=[reduce_lr],validation_data=val_gen,validation_steps=1)
+callbacks=[reduce_lr],validation_data=val_gen,validation_steps=625)
 files=[]
 predictions=[]
 for file in os.listdir("../../../data/xls/test/"):

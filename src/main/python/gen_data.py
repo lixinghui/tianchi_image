@@ -46,5 +46,5 @@ def gen_normal_data(num_each=50,shape=448):
 				scipy.misc.imsave('../../../data/xls/train/normal/{}_{}{}'.format(filename[:-4],j,filename[-4:]),image_cut)
 		
 		
-#gen_flaw_data()
+gen_flaw_data()
 gen_normal_data()
