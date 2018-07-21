@@ -11,16 +11,16 @@ xls
 
 --test            ##存放要预测的测试集
 
---train
-----flaw
-----normal
-
---val
-----flaw
-----normal
+--train  
+----flaw  
+----normal  
+  
+--val  
+----flaw  
+----normal  
 
 
 ## 运行
 
-运行 gen_data.py
+运行 gen_data.py  
 运行 test_vgg.py
