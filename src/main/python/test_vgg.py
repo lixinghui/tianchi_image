@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 
 ##设置模型参数
 batch_size=16
-steps_per_epoch=6522
-epochs=100
+steps_per_epoch=6
+epochs=1
 
 from numpy.random import seed
 seed(1)
@@ -67,17 +67,25 @@ verbose=1,
 min_lr=1e-5)
 
 history=model.fit_generator(train_gen,steps_per_epoch=steps_per_epoch,epochs=epochs,
-callbacks=[reduce_lr],validation_data=val_gen,validation_steps=625)
+callbacks=[reduce_lr],validation_data=val_gen,validation_steps=1)
 files=[]
 predictions=[]
 for file in os.listdir("../../../data/xls/test/"):
 	image_data=cv2.imread("../../../data/xls/test/{}".format(file))
-	image_data=cv2.resize(image_data,(224,224)).reshape(1,224,224,3)
-	prediction=model.predict(image_data)
+	preds=[]
+	for i in range(6):
+		for j in range(5):
+			x_upper=min(448*(i+1),2560)
+			y_upper=min(448*(j+1),1920)
+			image_cut=image_data[y_upper-448:y_upper,x_upper-448:x_upper]
+			image_cut=cv2.resize(image_cut,(224,224)).reshape(1,224,224,3)
+			prediction=model.predict(image_cut)
+			preds.append(prediction.ravel()[0])
+	result=max(preds)
 	files.append(file)
-	predictions.append(prediction.ravel()[0])
+	predictions.append(result)
 
-df_pred=pd.DataFrame({'file':files,"prediction":predictions})
+df_pred=pd.DataFrame({'filename':files,"probability":predictions})
 df_pred.to_csv("./prediction.csv",index=False)
 
 
