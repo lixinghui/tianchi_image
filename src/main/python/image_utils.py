@@ -15,7 +15,9 @@ base = "data/xl_part1/"
 output_prefix = "data/produce_img/"
 
 
-def get_path(fn, post_fix): return os.path.join(base, fn) + post_fix
+def get_path(fn, post_fix):
+    return fn + post_fix
+# def get_path(fn, post_fix): return os.path.join(base, fn) + post_fix
 
 
 def read_bbox(fn):
@@ -93,9 +95,18 @@ def cut_image(img: np.ndarray, verctical_num=4, horizontal_num=5):
     return col
 
 
+def preprocess_dir(dir, belong_type):
+    import glob
+    fn_list = glob.glob("{}/*.jpg".format(dir))
+    fn_list = [x[:-4] for x in fn_list]
+    for fn in fn_list:
+        preprocess(fn, need_draw_bb=True, belong_type=belong_type, save_type="neg")
 def preprocess(fn,
                need_draw_bb=True,
-               output_prefix=output_prefix):
+               output_prefix=output_prefix,
+               ios_threshoud=0.,
+               belong_type="all",
+               save_type="neg"):
     img = None
     if need_draw_bb:
         img = draw_bb(fn)
@@ -105,20 +116,39 @@ def preprocess(fn,
     all = cut_image(img)
     bbox_list = read_bbox(fn)
 
+    saves=None
+    if save_type == "neg":
+        saves=[True]
+    elif save_type == "pos":
+        saves=[False]
+    elif save_type == "both":
+        saves = [True, False]
+    else:
+        raise ValueError("save_type must be in [neg, pos, both]")
+    fun_negtive = None
+    if belong_type == 'all':
+        fun_negtive = all_belong
+    elif belong_type == 'partial':
+        fun_negtive = partial_belong
+
     for (i, j, data) in all:
         collector = []
         for bbox in bbox_list:
             part_img = get_coord(i, j)
             iou = get_iou(bbox, part_img)
             ios = get_ios(bbox, part_img)
-            # is_negtive = all_belong(bbox, part_img)
-            is_negtive = partial_belong(bbox, part_img) and ios > 0
+            # is_negtive = all_belong(bbox, part_img) #不同的负样本需要不同的bb判定方法
+            # is_negtive = partial_belong(bbox, part_img) and ios > ios_threshoud
+            is_negtive = fun_negtive(bbox, part_img) and ios > ios_threshoud
             collector.append([is_negtive, ios])
 
         from functools import reduce
         is_negtive, ios = reduce(lambda x, y: (x[0] or y[0], max(x[1], y[1])), collector)
-        if is_negtive:
+        if is_negtive in saves:
+            fn = fn.split("/")[-2:]
+            fn = os.path.join(*fn)
             path = os.path.join(output_prefix, "{}_{}_{}_{}_{:.2f}".format(fn, i, j, is_negtive, ios))
+            print("output_path: {}".format(path))
             directory = os.path.dirname(path)
             os.makedirs(directory, exist_ok=True)
             save_img(path, data)
@@ -194,8 +224,10 @@ def get_ios(s, o):
 # fn = 'diaowei/J01_2018.06.13 13_25_43'
 # fn = 'diaowei/J01_2018.06.13 13_31_01'
 # fn = 'diaowei/J01_2018.06.16 09_18_16'  # 只要切分框横/纵任一超过，就算是负样本，否则是正样本
-# fn = 'maoban/J01_2018.06.16 08_47_24'  # 需要IOU > 50% 算作负样本
-fn = 'zhadong/J01_2018.06.13 14_20_28'  # 需要IOU > 50% 算作负样本
+# fn = 'maoban/J01_2018.06.16 08_47_24'  # 需要IOS > 50% 算作负样本
+fn = '/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/xl_part1/diaowei/J01_2018.06.13 13_25_43'  # 需要IOS > 50% 算作负样本
 # plot_show(fn)
+
 if __name__ == '__main__':
-    preprocess(fn)
+    # preprocess(fn, True,belong_type="partial",save_type="both")
+    preprocess_dir("/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/xl_part1/diaowei", "partial")
