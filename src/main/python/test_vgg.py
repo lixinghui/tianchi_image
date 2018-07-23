@@ -10,10 +10,17 @@ from keras.preprocessing.image import *
 from keras.applications import ResNet50,VGG16
 from keras.optimizers import Adam
 import matplotlib.pyplot as plt
+import keras.backend.tensorflow_backend as KTF
 
+config = tf.ConfigProto()  
+config.gpu_options.allow_growth=True   #不全部占满显存, 按需分配
+session = tf.Session(config=config)
+
+# 设置session
+KTF.set_session(session)
 ##设置模型参数
-batch_size=16
-steps_per_epoch=6522
+batch_size=64
+steps_per_epoch=1631
 epochs=100
 
 from numpy.random import seed
@@ -23,17 +30,18 @@ set_random_seed(2)
 
 
 ## 导入vgg模型，并固定所有卷积层
-model_vgg=VGG16(include_top=False,input_shape=(224,224,3),pooling=None)
-for layer in model_vgg.layers[:-4]:
+model_vgg=ResNet50(include_top=False,input_shape=(224,224,3),pooling=None)
+for layer in model_vgg.layers[:]:
     layer.trainable=False
 
 ## 构造模型并进行编译
-X=model_vgg.output
+X=model_vgg.get_layer("activation_49").output
 X=Flatten()(X)
-X=Dense(128,activation="relu")(X)
+#X=Dense(128,activation="relu")(X)
 Y=Dense(1,activation="sigmoid")(X)
 model=Model(inputs=model_vgg.input,outputs=Y)
 
+optimizer=Adam(lr=0.0005)
 model.compile(optimizer="adam",loss="binary_crossentropy",metrics=["acc"])
 model.summary()
 
@@ -42,8 +50,8 @@ gen1=ImageDataGenerator(
     zca_whitening=False,
     zca_epsilon=1e-6,
     rotation_range=10,
-    width_shift_range=0.1,
-    height_shift_range=0.1,
+    width_shift_range=0,
+    height_shift_range=0,
     shear_range=0.,
     zoom_range=0.2,
     channel_shift_range=0.,
@@ -67,7 +75,7 @@ verbose=1,
 min_lr=1e-5)
 
 history=model.fit_generator(train_gen,steps_per_epoch=steps_per_epoch,epochs=epochs,
-callbacks=[reduce_lr],validation_data=val_gen,validation_steps=625)
+callbacks=[reduce_lr],validation_data=val_gen,validation_steps=156)
 files=[]
 predictions=[]
 for file in os.listdir("../../../data/xls/test/"):

@@ -1,7 +1,7 @@
-import scipy.misc
+import cv2
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 def random_cut(filename,x_min,y_min,x_max,y_max,shape=448):
@@ -22,7 +22,7 @@ def random_cut(filename,x_min,y_min,x_max,y_max,shape=448):
 
 	x=np.random.randint(x_lower,x_upper)
 	y=np.random.randint(y_lower,y_upper)
-	image=scipy.misc.imread('../../../data/xls/flaw/{}'.format(filename))
+	image=cv2.imread('../../../data/xls/flaw/{}'.format(filename))
 	image_cut=image[y:y+shape,x:x+shape,:]
 	
 	return image_cut
