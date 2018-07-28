@@ -14,23 +14,30 @@ os.chdir(dir_path + "/../../..")
 base = "data/xl_part1/"
 output_prefix = "data/produce_img/"
 
+import glob
+
 
 def get_path(fn, post_fix):
     return fn + post_fix
+
+
 # def get_path(fn, post_fix): return os.path.join(base, fn) + post_fix
 
 
 def read_bbox(fn):
     # matplotlib inline
-    tree = ET.ElementTree(file=get_path(fn, ".xml"))
-    a = []
+    if os.path.exists(get_path(fn, ".xml")):
+        tree = ET.ElementTree(file=get_path(fn, ".xml"))
+        a = []
 
-    def collect(path):
-        for x in tree.iterfind(path):
-            a.append(int(x.text))
+        def collect(path):
+            for x in tree.iterfind(path):
+                a.append(int(x.text))
 
-    collect("object/bndbox/")
-    return np.asarray(a).reshape([-1, 4])
+        collect("object/bndbox/")
+        return np.asarray(a).reshape([-1, 4])
+    else:
+        return None
 
 
 def draw_rectangle(draw, coordinates, color="black", width=10):
@@ -57,13 +64,17 @@ def plot_show(fn):
     plt.show()
 
 
-def read_img(fn, mode='CWH'):
+def read_img(fn, mode='CHW'):
     x = load_img(get_path(fn, ".jpg"))
-    # x = x.convert('LA')
-    if mode == 'CWH':
+    if mode == 'CHW':
         x = np.transpose(x, [2, 1, 0])
+    elif mode == "WHC":
+        x = np.transpose(x, [1, 0, 2])
     else:
         x = np.asarray(x)
+
+
+
     return x
 
 
@@ -76,35 +87,43 @@ def save_img(fn, data):
     img.save(fn + ".jpg")
 
 
-def get_coord(horizontal_idx, verctical_idx,
-              width=2560, height=1920,
-              verctical_num=4, horizontal_num=5):
-    xi, yi = width / horizontal_num * horizontal_idx, height / verctical_num * verctical_idx
-    xa, ya = width / horizontal_num * (horizontal_idx + 1) - 1, height / verctical_num * (verctical_idx + 1) - 1
+# def get_coord(horizontal_idx, verctical_idx,
+#               width=2560, height=1920,
+#               verctical_num=8, horizontal_num=6):
+#     xi, yi = width / horizontal_num * horizontal_idx, height / verctical_num * verctical_idx
+#     xa, ya = width / horizontal_num * (horizontal_idx + 1) - 1, height / verctical_num * (verctical_idx + 1) - 1
+#     return np.array([xi, yi, xa, ya])
+
+def get_coord(horizontal_idx, verctical_idx, length,
+              width=2560, height=1920, ):
+    xi, yi = max(length * horizontal_idx, 0), max(length * verctical_idx,0)
+    xa, ya = min(length * (horizontal_idx + 1) - 1,width) , min(height, length * (verctical_idx + 1) - 1)
     return np.array([xi, yi, xa, ya])
 
 
-def cut_image(img: np.ndarray, verctical_num=4, horizontal_num=5):
-    hsplits = np.hsplit(img, horizontal_num)
+def cut_image(img: np.ndarray, length):
+    w, h, _ = img.shape
+    hsplits = np.hsplit(img, range(length, h, length))
     col = []
     for (horizontal_idx, x) in enumerate(hsplits):
-        hsplit_of_vsplits = np.vsplit(x, verctical_num)
+        hsplit_of_vsplits = np.vsplit(x, range(length, w, length))
         for verctical_idx, y in enumerate(hsplit_of_vsplits):
             col.append((horizontal_idx, verctical_idx, y))
 
     return col
 
 
-def preprocess_dir(dir, belong_type):
-    import glob
+def preprocess_dir(dir, belong_type, save_type="neg"):
     fn_list = glob.glob("{}/*.jpg".format(dir))
     fn_list = [x[:-4] for x in fn_list]
     for fn in fn_list:
-        preprocess(fn, need_draw_bb=True, belong_type=belong_type, save_type="neg")
+        preprocess(fn, need_draw_bb=True, belong_type=belong_type, save_type=save_type)
+
+
 def preprocess(fn,
                need_draw_bb=True,
                output_prefix=output_prefix,
-               ios_threshoud=0.,
+               ios_threshoud=0.1,
                belong_type="all",
                save_type="neg"):
     img = None
@@ -113,14 +132,15 @@ def preprocess(fn,
     else:
         img = read_img(fn, 'WHC')
     img = np.asarray(img)
-    all = cut_image(img)
+    length = 256
+    all = cut_image(img, length)
     bbox_list = read_bbox(fn)
 
-    saves=None
+    saves = None
     if save_type == "neg":
-        saves=[True]
+        saves = [True]
     elif save_type == "pos":
-        saves=[False]
+        saves = [False]
     elif save_type == "both":
         saves = [True, False]
     else:
@@ -130,11 +150,15 @@ def preprocess(fn,
         fun_negtive = all_belong
     elif belong_type == 'partial':
         fun_negtive = partial_belong
+    elif belong_type == 'ios':
+        fun_negtive = lambda x, y: True
+    else:
+        raise ValueError("belong_type not supported")
 
     for (i, j, data) in all:
         collector = []
         for bbox in bbox_list:
-            part_img = get_coord(i, j)
+            part_img = get_coord(i, j, length)
             iou = get_iou(bbox, part_img)
             ios = get_ios(bbox, part_img)
             # is_negtive = all_belong(bbox, part_img) #不同的负样本需要不同的bb判定方法
@@ -152,6 +176,53 @@ def preprocess(fn,
             directory = os.path.dirname(path)
             os.makedirs(directory, exist_ok=True)
             save_img(path, data)
+
+
+def gen_fcn_label(fn,
+                  ios_threshoud=0.1,
+                  belong_type="ios",
+                  length=512,
+                  ):
+    """生成FCN的标注信息"""
+    bbox_list = read_bbox(fn)
+
+    fun_negtive = None
+    if belong_type == 'all':
+        fun_negtive = all_belong
+    elif belong_type == 'partial':
+        fun_negtive = partial_belong
+    elif belong_type == 'ios':
+        fun_negtive = lambda x, y: True
+    else:
+        raise ValueError("belong_type not supported")
+
+    v_num = 5
+    h_num = 4
+
+    def produce_neg():
+        img_collector = []
+        for i in range(v_num):
+            for j in range(h_num):
+                bb_collector = []
+                for bbox in bbox_list:
+                    part_img = get_coord(i, j, length)
+                    # iou = get_iou(bbox, part_img)
+                    ios = get_ios(bbox, part_img)
+                    is_negtive = fun_negtive(bbox, part_img) and ios > ios_threshoud
+                    bb_collector.append([is_negtive, ios])
+
+                from functools import reduce
+                is_negtive, ios = reduce(lambda x, y: (x[0] or y[0], max(x[1], y[1])), bb_collector)
+
+                img_collector.append(not is_negtive)
+        # weight = map(lambda x: 1.0 if not x else 0.1, img_collector)
+        weight = [1.0 if not x else 0.1 for x in img_collector]
+        return 1, np.asarray(img_collector, dtype=np.int32), np.asarray(weight, dtype=np.float32)
+
+    def produce_pos():
+        return 0, np.ones(v_num * h_num, dtype=np.int32), np.ones((v_num * h_num), dtype=np.float32)
+
+    return produce_pos() if bbox_list is None else produce_neg()
 
 
 def all_belong(s, o):
@@ -221,13 +292,28 @@ def get_ios(s, o):
     return iou
 
 
-# fn = 'diaowei/J01_2018.06.13 13_25_43'
-# fn = 'diaowei/J01_2018.06.13 13_31_01'
-# fn = 'diaowei/J01_2018.06.16 09_18_16'  # 只要切分框横/纵任一超过，就算是负样本，否则是正样本
-# fn = 'maoban/J01_2018.06.16 08_47_24'  # 需要IOS > 50% 算作负样本
-fn = '/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/xl_part1/diaowei/J01_2018.06.13 13_25_43'  # 需要IOS > 50% 算作负样本
 # plot_show(fn)
+
+def preprocess_all_dir(path):
+    dir_list = glob.glob(path)
+    for x in dir_list:
+        preprocess_dir(x, "ios", save_type="neg")
+
 
 if __name__ == '__main__':
     # preprocess(fn, True,belong_type="partial",save_type="both")
-    preprocess_dir("/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/xl_part1/diaowei", "partial")
+    # dirx = "/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/part2/ȱγ"
+    # dirx = "/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/part2/֯ϡ"
+    # dirx = "/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/part2/修印"
+    # dirx = "/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/part2/剪洞"
+    # preprocess_all_dir("/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/part2/*")
+
+    # fn = 'diaowei/J01_2018.06.13 13_25_43'
+    # fn = 'diaowei/J01_2018.06.13 13_31_01'
+    # fn = 'diaowei/J01_2018.06.16 09_18_16'  # 只要切分框横/纵任一超过，就算是负样本，否则是正样本
+    # fn = 'maoban/J01_2018.06.16 08_47_24'  # 需要IOS > 50% 算作负样本
+    fn = '/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/xl_part1/diaowei/J01_2018.06.13 13_25_43'  # 需要IOS > 50% 算作负样本
+    # fn = '/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/xl_part1/normal/J01_2018.06.13 13_23_08'
+
+    # print(gen_fcn_label(fn))
+    read_img(fn)
