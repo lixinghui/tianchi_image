@@ -15,8 +15,8 @@ def gen_flaw_data(num_each=50,shape=448):
 				x_max=df_label.loc[i,'xmax']
 				y_max=df_label.loc[i,'ymax']
 				image_cut=random_cut(filename,x_min,y_min,x_max,y_max)
-				#scipy.misc.imsave('../../../data/xls/val/flaw/{}_{}_{}_{}{}'.format(filename[:-4],
-			#					x_min,y_min,j,filename[-4:]),image_cut)
+				scipy.misc.imsave('../../../data/xls/val/flaw/{}_{}_{}_{}{}'.format(filename[:-4],
+								x_min,y_min,j,filename[-4:]),image_cut)
 		else:
 			for j in range(num_each+20):
 				filename=df_label.loc[i,'filename']
