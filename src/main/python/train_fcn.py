@@ -8,6 +8,7 @@ from keras.layers import Input, Lambda
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
+import tensorflow as tf
 import os
 
 from keras.utils.training_utils import multi_gpu_model
