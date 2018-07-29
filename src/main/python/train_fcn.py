@@ -9,7 +9,10 @@ from keras.models import Model
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 import os
-from fcn.model1 import yolo_body, fcn_loss
+
+from keras_preprocessing.image import load_img
+
+from fcn.model1 import fcn_impossable, fcn_loss_impossible, fcn, weighted_classification_loss
 import argparse as ap
 
 
@@ -17,7 +20,7 @@ def _main():
     parser = ap.ArgumentParser()
     #argument_default="/Users/huanghaihun/PycharmProjects/keras-yolo3/data/xl_part1/*/*.jpg"
     parser.add_argument('--data_path',  help='data path string', type=str,
-                        default="/Users/huanghaihun/PycharmProjects/keras-yolo3/data/xl_part1/*/*.jpg")
+                        default="/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/produce_img/*.jpg")
     parser.add_argument('--log_dir', help='log dir ', type=str,
                         default="/tmp/logs/000/")
     parser.add_argument('--batch_size', help='log dir ', type=int,
@@ -25,7 +28,7 @@ def _main():
     args = parser.parse_args()
 
     log_dir = args.log_dir
-    model = create_model(2)
+    model = create_impossible_model(2)
 
     logging = TensorBoard(log_dir=log_dir)
     checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
@@ -47,14 +50,14 @@ def _main():
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:
         model.compile(optimizer=Adam(lr=1e-3), loss={
-            # use custom fcn_loss Lambda layer.
-            'fcn_loss': lambda y_true, y_pred: y_pred})
+            # use custom fcn_loss_impossible Lambda layer.
+            'fcn_loss_impossible': lambda y_true, y_pred: y_pred})
 
         batch_size = args.batch_size
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size),
+        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=True),
                             steps_per_epoch=max(1, num_train // batch_size),
-                            validation_data=data_generator_wrapper(lines[num_train:], batch_size, ),
+                            validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=True),
                             validation_steps=max(1, num_val // batch_size),
                             epochs=50,
                             initial_epoch=0,
@@ -67,7 +70,7 @@ def test():
 
     val_split = 0.1
     import glob
-    lines = glob.glob("/Users/huanghaihun/PycharmProjects/keras-yolo3/data/xl_part1/*/*.jpg")
+    lines = glob.glob("/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/produce_img/*/*.jpg")
 
     np.random.seed(10101)
     np.random.shuffle(lines)
@@ -87,26 +90,29 @@ def test():
 
 def test_model(model, batch_size=2):
     a = model.predict(
-        [np.ones([batch_size, 2560, 1920, 3]),
+        [np.ones([batch_size, 512, 512, 3]),
          np.ones([batch_size, 2]),
-         np.ones([batch_size, 5 * 4, 2]),
-         np.ones([batch_size, 5 * 4, 2])
+         np.ones([batch_size]),
          ], 2)
     print([x.shape for x in a])
 
-
-# def test_model(model, batch_size=1):
-#     a = model.predict(
-#         [np.ones([batch_size, 2560, 1920, 3]),
-#          ], 2)
-#     print([x.shape for x in a])
 
 def save_model_png(model, to_file='/tmp/model.png'):
     from keras.utils import plot_model
     plot_model(model, to_file=to_file)
 
+def create_model(num_classes=2,):
+    K.clear_session()  # get a new session
+    image_input = Input(shape=(None, None, 3))
 
-def create_model(num_classes=2, ):
+    y_true = [Input(shape=(num_classes,)),
+              Input(shape=(1,)),]
+    fcn_model = fcn(image_input, num_classes=num_classes)
+    loss = Lambda(weighted_classification_loss,output_shape=(1,), name="loss")([fcn_model.output, *y_true])
+    model = Model([image_input, *y_true], loss)
+    return model
+
+def create_impossible_model(num_classes=2, ):
     '''create the training model'''
     K.clear_session()  # get a new session
     image_input = Input(shape=(None, None, 3))
@@ -115,9 +121,9 @@ def create_model(num_classes=2, ):
               Input(shape=(None, num_classes), ),
               Input(shape=(None, 1), ),
               ]
-    model_body = yolo_body(image_input, num_classes)
+    model_body = fcn_impossable(image_input, num_classes)
 
-    model_loss = Lambda(fcn_loss, output_shape=(1,), name="fcn_loss", )([*model_body.output, *y_true])
+    model_loss = Lambda(fcn_loss_impossible, output_shape=(1,), name="fcn_loss_impossible", )([*model_body.output, *y_true])
     model = Model([model_body.input, *y_true], model_loss)
 
     # test_model(model)
@@ -128,10 +134,10 @@ def create_model(num_classes=2, ):
 import image_utils as iu
 
 
-def data_generator_wrapper(annotation_lines, batch_size):
+def data_generator_wrapper(annotation_lines, batch_size, num_class, is_train):
     n = len(annotation_lines)
     if n == 0 or batch_size <= 0: return None
-    return data_generator(annotation_lines, batch_size, )
+    return data_generator(annotation_lines, batch_size, num_class, is_train )
 
 
 def get_one_hot(targets, nb_classes):
@@ -143,7 +149,7 @@ def get_one_hot(targets, nb_classes):
     return res.reshape(list(targets.shape) + [nb_classes])
 
 
-def data_generator(annotation_lines, batch_size, cell_length=512, num_classes=2):
+def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
     '''data generator for fit_generator'''
     n = len(annotation_lines)
     i = 0
@@ -154,31 +160,33 @@ def data_generator(annotation_lines, batch_size, cell_length=512, num_classes=2)
     while True:
         image_data = []
         label_data = []
-        cell_label_data = []
-        cell_weight_data = []
+        weight_data = []
         for b in range(batch_size):
             if i == 0:
                 np.random.shuffle(annotation_lines)
-            fn = annotation_lines[i][:-4]
-            image = iu.read_img(fn, "WHC")
+            fn = annotation_lines[i]
+            image = load_img(fn)
+            image = iu.random_image(image, (512,512), random=is_train, )
             image_data.append(image)
-            label, cell_label, cell_weight = iu.gen_fcn_label(fn, length=cell_length)
+
+            label = 0 if "flawInbox" in fn else 1
+            weight = 0.1 if "flawOutbox" in fn else 1.0
             label_data.append(label)
-            cell_label_data.append(cell_label)
-            cell_weight_data.append(cell_weight)
+            weight_data.append(weight)
             i = (i + 1) % n
         image_data = np.array(image_data)
 
-        image_data, label_data, cell_label_data, cell_weight_data \
-            = [np.stack(x) for x in [image_data, label_data, cell_label_data, cell_weight_data]]
+        image_data, label_data, weight_data \
+            = [np.stack(x) for x in [image_data, label_data, weight_data]]
 
-        arr = [image_data, _one_hot(label_data), _one_hot(cell_label_data),
-               np.reshape(cell_weight_data, [*cell_weight_data.shape, 1])]
+        arr = [image_data, _one_hot(label_data), weight_data]
 
         yield arr, np.zeros(batch_size)
 
 
 if __name__ == '__main__':
-    _main()
+    # a = create_model(2)
+    # test_model(a,2)
+    # _main()
     # test()
-    # model = create_model(num_classes=2)
+    _main()

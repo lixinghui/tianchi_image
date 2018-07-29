@@ -7,6 +7,9 @@ from keras.preprocessing.image import img_to_array
 # from keras.applications.imagenet_utils import decode_predictions
 import xml.etree.cElementTree as ET
 import matplotlib.pyplot as plt
+from matplotlib.colors import hsv_to_rgb, rgb_to_hsv
+
+from fcn.utils import rand
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 os.chdir(dir_path + "/../../..")
@@ -73,8 +76,6 @@ def read_img(fn, mode='CHW'):
     else:
         x = np.asarray(x)
 
-
-
     return x
 
 
@@ -83,7 +84,7 @@ def stack_img(img):
 
 
 def save_img(fn, data):
-    img = Image.fromarray(np.uint8(data))
+    img = Image.fromarray(np.transpose(np.uint8(data), [1,0,2]))
     img.save(fn + ".jpg")
 
 
@@ -94,27 +95,84 @@ def save_img(fn, data):
 #     xa, ya = width / horizontal_num * (horizontal_idx + 1) - 1, height / verctical_num * (verctical_idx + 1) - 1
 #     return np.array([xi, yi, xa, ya])
 
-def get_coord(horizontal_idx, verctical_idx, length,
+def get_coord(horizontal_idx, verctical_idx, w_length, h_length,
               width=2560, height=1920, ):
-    xi, yi = max(length * horizontal_idx, 0), max(length * verctical_idx,0)
-    xa, ya = min(length * (horizontal_idx + 1) - 1,width) , min(height, length * (verctical_idx + 1) - 1)
+    xi, yi = max(w_length * horizontal_idx, 0), max(h_length * verctical_idx, 0)
+    xa, ya = min(w_length * (horizontal_idx + 1) - 1, width), min(height, h_length * (verctical_idx + 1) - 1)
     return np.array([xi, yi, xa, ya])
 
 
-def cut_image(img: np.ndarray, length):
+def cut_image(img: np.ndarray, w_length, h_length):
     w, h, _ = img.shape
-    hsplits = np.hsplit(img, range(length, h, length))
+    hsplits = np.vsplit(img, range(w_length, w, w_length))
     col = []
     for (horizontal_idx, x) in enumerate(hsplits):
-        hsplit_of_vsplits = np.vsplit(x, range(length, w, length))
+        hsplit_of_vsplits = np.hsplit(x, range(h_length, h, h_length))
         for verctical_idx, y in enumerate(hsplit_of_vsplits):
             col.append((horizontal_idx, verctical_idx, y))
 
     return col
 
 
-def preprocess_dir(dir, belong_type, save_type="neg"):
-    fn_list = glob.glob("{}/*.jpg".format(dir))
+def random_image(image, input_shape, random=False, jitter=.3, hue=.1, sat=1.5, val=1.5, proc_img=True):
+    iw, ih = image.size
+    h, w = input_shape
+
+    if not random:
+        scale = min(w / iw, h / ih)
+        nw = int(iw * scale)
+        nh = int(ih * scale)
+        dx = (w - nw) // 2
+        dy = (h - nh) // 2
+        image_data = 0
+        image = image.resize((nw, nh), Image.BICUBIC)
+        new_image = Image.new('RGB', (w, h), (128, 128, 128))
+        new_image.paste(image, (dx, dy))
+        image_data = np.array(new_image) / 255.
+
+        return image_data
+
+    # resize image
+    new_ar = w / h * rand(1 - jitter, 1 + jitter) / rand(1 - jitter, 1 + jitter)
+    scale = rand(.25, 2)
+    if new_ar < 1:
+        nh = int(scale * h)
+        nw = int(nh * new_ar)
+    else:
+        nw = int(scale * w)
+        nh = int(nw / new_ar)
+    image = image.resize((nw, nh), Image.BICUBIC)
+
+    # place image
+    dx = int(rand(0, w - nw))
+    dy = int(rand(0, h - nh))
+    new_image = Image.new('RGB', (w, h), (128, 128, 128))
+    new_image.paste(image, (dx, dy))
+    image = new_image
+
+    # flip image or not
+    flip = rand() < .5
+    if flip: image = image.transpose(Image.FLIP_LEFT_RIGHT)
+
+    # distort image
+    hue = rand(-hue, hue)
+    sat = rand(1, sat) if rand() < .5 else 1 / rand(1, sat)
+    val = rand(1, val) if rand() < .5 else 1 / rand(1, val)
+    x = rgb_to_hsv(np.array(image) / 255.)
+    x[..., 0] += hue
+    x[..., 0][x[..., 0] > 1] -= 1
+    x[..., 0][x[..., 0] < 0] += 1
+    x[..., 1] *= sat
+    x[..., 2] *= val
+    x[x > 1] = 1
+    x[x < 0] = 0
+    image_data = hsv_to_rgb(x)  # numpy array, 0 to 1
+
+    return image_data
+
+
+def preprocess_dir(glob_path, belong_type="ios", save_type="neg"):
+    fn_list = glob.glob(glob_path)
     fn_list = [x[:-4] for x in fn_list]
     for fn in fn_list:
         preprocess(fn, need_draw_bb=True, belong_type=belong_type, save_type=save_type)
@@ -124,17 +182,18 @@ def preprocess(fn,
                need_draw_bb=True,
                output_prefix=output_prefix,
                ios_threshoud=0.1,
-               belong_type="all",
+               belong_type="ios",
                save_type="neg"):
     img = None
-    if need_draw_bb:
+    bbox_list = read_bbox(fn)
+
+    if bbox_list is not None and need_draw_bb:
         img = draw_bb(fn)
     else:
         img = read_img(fn, 'WHC')
     img = np.asarray(img)
-    length = 256
-    all = cut_image(img, length)
-    bbox_list = read_bbox(fn)
+    w_length, h_length = 512, 480
+    all = cut_image(img, w_length, h_length)
 
     saves = None
     if save_type == "neg":
@@ -155,28 +214,39 @@ def preprocess(fn,
     else:
         raise ValueError("belong_type not supported")
 
-    for (i, j, data) in all:
+    def save(fn, data, flag, ios, i, j):
+        fn = fn.split("/")[-2:]
+        fn = os.path.join(*fn)
+        path = os.path.join(output_prefix, "{}_{}_{}_{}_{:.2f}".format(fn, i, j, flag, ios))
+        print("output_path: {}".format(path))
+        directory = os.path.dirname(path)
+        os.makedirs(directory, exist_ok=True)
+        save_img(path, data)
+
+    def produce_flaw(i, j, data, fn):
         collector = []
         for bbox in bbox_list:
-            part_img = get_coord(i, j, length)
-            iou = get_iou(bbox, part_img)
+            part_img = get_coord(i, j, w_length, h_length)
+            # iou = get_iou(bbox, part_img)
             ios = get_ios(bbox, part_img)
-            # is_negtive = all_belong(bbox, part_img) #不同的负样本需要不同的bb判定方法
-            # is_negtive = partial_belong(bbox, part_img) and ios > ios_threshoud
             is_negtive = fun_negtive(bbox, part_img) and ios > ios_threshoud
             collector.append([is_negtive, ios])
 
         from functools import reduce
         is_negtive, ios = reduce(lambda x, y: (x[0] or y[0], max(x[1], y[1])), collector)
-        if is_negtive in saves:
-            fn = fn.split("/")[-2:]
-            fn = os.path.join(*fn)
-            path = os.path.join(output_prefix, "{}_{}_{}_{}_{:.2f}".format(fn, i, j, is_negtive, ios))
-            print("output_path: {}".format(path))
-            directory = os.path.dirname(path)
-            os.makedirs(directory, exist_ok=True)
-            save_img(path, data)
 
+        flag = "flawInbox" if is_negtive else "flawOutbox"
+        if is_negtive in saves:
+            save(fn, data, flag, ios, i, j)
+
+    def produce_norm(i, j, data, fn):
+        save(fn, data, "normal", 0, i, j)
+
+    for (i, j, data) in all:
+        if bbox_list is not None:
+            produce_flaw(i, j, data, fn)
+        else:
+            produce_norm(i, j, data, fn)
 
 def gen_fcn_label(fn,
                   ios_threshoud=0.1,
@@ -300,6 +370,18 @@ def preprocess_all_dir(path):
         preprocess_dir(x, "ios", save_type="neg")
 
 
+def validate_random_img(fn):
+    a = load_img(get_path(fn, ".jpg"))
+    plt.imshow(a)
+
+    ra = random_image(a, (512, 512), random=True)
+    ra = (ra * 255).astype(np.uint8)
+
+    plt.imshow(ra)
+
+    plt.show()
+
+
 if __name__ == '__main__':
     # preprocess(fn, True,belong_type="partial",save_type="both")
     # dirx = "/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/part2/ȱγ"
@@ -312,8 +394,11 @@ if __name__ == '__main__':
     # fn = 'diaowei/J01_2018.06.13 13_31_01'
     # fn = 'diaowei/J01_2018.06.16 09_18_16'  # 只要切分框横/纵任一超过，就算是负样本，否则是正样本
     # fn = 'maoban/J01_2018.06.16 08_47_24'  # 需要IOS > 50% 算作负样本
-    fn = '/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/xl_part1/diaowei/J01_2018.06.13 13_25_43'  # 需要IOS > 50% 算作负样本
+    # fn = '/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/xl_part1/diaowei/J01_2018.06.13 13_25_43'  # 需要IOS > 50% 算作负样本
     # fn = '/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/xl_part1/normal/J01_2018.06.13 13_23_08'
 
     # print(gen_fcn_label(fn))
-    read_img(fn)
+    # read_img(fn)
+    # validate_random_img('/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/produce_img/剪洞/J01_2018.06.22 08_45_25_2_1_True_1.00')
+    preprocess_dir('/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/part2/正常/*.jpg'
+                   )

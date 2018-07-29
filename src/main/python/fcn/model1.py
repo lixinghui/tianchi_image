@@ -5,13 +5,13 @@ from functools import wraps
 import numpy as np
 import tensorflow as tf
 from keras import backend as K
-from keras.layers import Conv2D, Add, ZeroPadding2D, UpSampling2D, Concatenate, MaxPooling2D, Cropping2D, Reshape
+from keras.layers import Conv2D, Add, ZeroPadding2D, UpSampling2D, Concatenate, MaxPooling2D, Cropping2D, Reshape, Dense
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model
 from keras.regularizers import l2
-# from python.utils import compose
-from fcn.utils import *
+
+from fcn.utils import compose
 
 @wraps(Conv2D)
 def DarknetConv2D(*args, **kwargs):
@@ -44,8 +44,37 @@ def resblock_body(x, num_filters, num_blocks, padding=((1, 0), (1, 0)), strides=
         x = Add()([x, y])
     return x
 
+def darknet_8(x):
+    '''
+    Darknent body having 52 Convolution2D layers
+        处理padding, 奇数 strides=2 需要做 (1,1) padding
+                    偶数 strides=2 需要做 (1,0) padding
+                    2 -> 1 padding 0
+                    1 -> 1 padding 0
+        (1, 20, 15, 1024) ->(1, 10, 8, 1024), padding = ((1,0),(1,1))
 
-def darknet_body(x):
+    '''
+
+    layer_stack = []
+    x = DarknetConv2D_BN_Leaky(32, (3, 3))(x)
+    x = resblock_body(x, 64, 1) #1
+    x = resblock_body(x, 128, 2) #2
+    x = resblock_body(x, 256, 4) #3
+    x = resblock_body(x, 512, 4) #4
+    x = resblock_body(x, 1024, 2) #5
+    x = resblock_body(x, 1024, 2)   #;layer_stack.insert(0, x) #6
+    x = resblock_body(x, 1024, 2, ) #;layer_stack.insert(0, x) #7
+    x = resblock_body(x, 1024, 2, ) #;layer_stack.insert(0, x) #8
+    x = resblock_body(x, 1024, 2, ) #;layer_stack.insert(0, x) #8
+    return x
+
+def fcn(inputs, num_classes=2):
+    x = Model(inputs, darknet_8(inputs))
+    x = Dense(num_classes)(x.output)
+    x = Reshape([num_classes])(x)
+    return Model(inputs, x)
+
+def darknet_tolong(x):
     '''
     Darknent body having 52 Convolution2D layers
         处理padding, 奇数 strides=2 需要做 (1,1) padding
@@ -94,9 +123,9 @@ def make_last_layers(x, num_filters, out_filters):
     return y
 
 
-def yolo_body(inputs, num_classes=2):
-    """Create YOLO_V3 fcn CNN body in Keras."""
-    darknet = Model(inputs, darknet_body(inputs))
+def fcn_impossable(inputs, num_classes=2):
+    """Create YOLO_V3 model CNN body in Keras."""
+    darknet = Model(inputs, darknet_tolong(inputs))
     layer_stack = darknet.output
     # print(layer_stack)
     y1 = DarknetConv2D(num_classes, (1, 1))(layer_stack[0])
@@ -126,9 +155,17 @@ def yolo_body(inputs, num_classes=2):
     return Model(inputs, [y1,x,])
     # return Model(inputs, layer_stack)
 
+def weighted_classification_loss(args, ):
+    pred_1,  \
+    y_1, \
+    weight = args
 
+    c1_loss = K.binary_crossentropy(y_1, pred_1, True) * weight
 
-def fcn_loss(args, ):
+    loss = K.mean(c1_loss)
+    return loss
+
+def fcn_loss_impossible(args, ):
     pred_1, pred_5_4, \
     y_1, y_5_4, \
     weight = args
