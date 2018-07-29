@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb, rgb_to_hsv
 
 from fcn.utils import rand
-
+import argparse as ap
 dir_path = os.path.dirname(os.path.realpath(__file__))
 os.chdir(dir_path + "/../../..")
 
@@ -171,11 +171,11 @@ def random_image(image, input_shape, random=False, jitter=.3, hue=.1, sat=1.5, v
     return image_data
 
 
-def preprocess_dir(glob_path, belong_type="ios", save_type="neg"):
+def preprocess_dir(glob_path, belong_type="ios", save_type="neg", draw_bb=False):
     fn_list = glob.glob(glob_path)
     fn_list = [x[:-4] for x in fn_list]
     for fn in fn_list:
-        preprocess(fn, need_draw_bb=True, belong_type=belong_type, save_type=save_type)
+        preprocess(fn, need_draw_bb=draw_bb, belong_type=belong_type, save_type=save_type, )
 
 
 def preprocess(fn,
@@ -189,9 +189,11 @@ def preprocess(fn,
 
     if bbox_list is not None and need_draw_bb:
         img = draw_bb(fn)
+        img = np.asarray(img)
+        img = np.transpose(img,[1,0,2])
     else:
         img = read_img(fn, 'WHC')
-    img = np.asarray(img)
+
     w_length, h_length = 512, 480
     all = cut_image(img, w_length, h_length)
 
@@ -400,5 +402,10 @@ if __name__ == '__main__':
     # print(gen_fcn_label(fn))
     # read_img(fn)
     # validate_random_img('/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/produce_img/剪洞/J01_2018.06.22 08_45_25_2_1_True_1.00')
-    preprocess_dir('/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/part2/正常/*.jpg'
-                   )
+    parser = ap.ArgumentParser()
+    #argument_default="/Users/huanghaihun/PycharmProjects/keras-yolo3/data/xl_part1/*/*.jpg"
+    parser.add_argument('--data_path',  help='data path string', type=str,
+                        default="/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/part2/*/*.jpg")
+    args = parser.parse_args()
+    preprocess_dir(args.data_path)
+
