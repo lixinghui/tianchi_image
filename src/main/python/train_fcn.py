@@ -10,6 +10,8 @@ from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 import os
 
+from keras.utils.training_utils import multi_gpu_model
+
 from keras_preprocessing.image import load_img
 
 from fcn.model1 import fcn_impossable, fcn_loss_impossible, fcn, weighted_classification_loss
@@ -28,7 +30,13 @@ def _main():
     args = parser.parse_args()
 
     log_dir = args.log_dir
-    model = create_model(2)
+    with tf.device("/cpu:0"):
+        model = create_model(2)
+        model.compile(optimizer=Adam(lr=1e-3), loss={
+            # use custom fcn_loss_impossible Lambda layer.
+            'loss': lambda y_true, y_pred: y_pred})
+
+    model = multi_gpu_model(model,gpus=2)
 
     logging = TensorBoard(log_dir=log_dir)
     checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
@@ -49,9 +57,7 @@ def _main():
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:
-        model.compile(optimizer=Adam(lr=1e-3), loss={
-            # use custom fcn_loss_impossible Lambda layer.
-            'weighted_classification_loss': lambda y_true, y_pred: y_pred})
+
 
         batch_size = args.batch_size
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
