@@ -37,7 +37,7 @@ def _main():
             # use custom fcn_loss_impossible Lambda layer.
             'loss': lambda y_true, y_pred: y_pred})
 
-    model = multi_gpu_model(model,gpus=2)
+    # model = multi_gpu_model(model,gpus=[0,1])
 
     logging = TensorBoard(log_dir=log_dir)
     checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
@@ -130,7 +130,7 @@ def create_impossible_model(num_classes=2, ):
               ]
     model_body = fcn_impossable(image_input, num_classes)
 
-    model_loss = Lambda(fcn_loss_impossible, output_shape=(1,), name="fcn_loss_impossible", )([*model_body.output, *y_true])
+    model_loss = Lambda(fcn_loss_impossible, output_shape=(1,1), name="fcn_loss_impossible", )([*model_body.output, *y_true])
     model = Model([model_body.input, *y_true], model_loss)
 
     # test_model(model)

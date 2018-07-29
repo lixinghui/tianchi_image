@@ -162,7 +162,7 @@ def weighted_classification_loss(args, ):
 
     c1_loss = K.binary_crossentropy(y_1, pred_1, True) * weight
 
-    loss = K.mean(c1_loss)
+    loss = K.mean(c1_loss,keepdims=True)
     return loss
 
 def fcn_loss_impossible(args, ):
