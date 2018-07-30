@@ -20,8 +20,8 @@ session = tf.Session(config=config)
 KTF.set_session(session)
 ##设置模型参数
 batch_size=16
-steps_per_epoch=2
-epochs=5
+steps_per_epoch=65
+epochs=250
 
 from numpy.random import seed
 seed(1)
@@ -66,22 +66,22 @@ val_gen=gen2.flow_from_directory("../../../data/xls/val",target_size=(224, 224),
 print("\nplease notice that the label and corresponding item:",train_gen.class_indices)
 ## 设置学习率递减
 
-#reduce_lr=ReduceLROnPlateau(monitor='loss',
-#factor=0.2,
-#patience=5,
-#verbose=1,
-#min_lr=1e-5)
+reduce_lr=ReduceLROnPlateau(monitor='val_acc',
+factor=0.2,
+patience=5,
+verbose=1,
+min_lr=1e-5)
 def schedule(epoch):
 	return 0.001*(1/(1+epoch))
 
 lr_scheduler=LearningRateScheduler(schedule)
 
 # 设置earlystop
-early_stop=EarlyStopping(monitor='val_loss', patience=8, verbose=0, mode='auto')
+early_stop=EarlyStopping(monitor='val_acc', patience=8, verbose=0, mode='auto')
 
 #训练模型
 history=model.fit_generator(train_gen,steps_per_epoch=steps_per_epoch,epochs=epochs,
-			callbacks=[lr_scheduler,early_stop],validation_data=val_gen,validation_steps=1)
+			callbacks=[reduce_lr,early_stop],validation_data=val_gen,validation_steps=625)
 
 
 files=[]
@@ -102,7 +102,7 @@ for file in os.listdir("../../../data/xls/test/"):
 			
 			prediction=(model.predict(image_origin)+model.predict(image_flip_h)+model.predict(image_flip_v)+model.predict(image_flip_hv))/4
 			preds.append(prediction.ravel()[0])
-	result=min(preds)
+	result=1-np.clip(np.mean(preds),0.001,0.999)
 	files.append(file)
 	predictions.append(result)
 

@@ -17,6 +17,7 @@ from keras_preprocessing.image import load_img
 
 from fcn.model1 import fcn_impossable, fcn_loss_impossible, fcn, weighted_classification_loss
 import argparse as ap
+os.environ["CUDA_VISIBLE_DEVICES"]="1" 
 
 
 def _main():
@@ -31,13 +32,10 @@ def _main():
     args = parser.parse_args()
 
     log_dir = args.log_dir
-    with tf.device("/cpu:0"):
-        model = create_model(2)
-        model.compile(optimizer=Adam(lr=1e-3), loss={
-            # use custom fcn_loss_impossible Lambda layer.
-            'loss': lambda y_true, y_pred: y_pred})
-
-    # model = multi_gpu_model(model,gpus=[0,1])
+    model = create_model(2)
+    #with tf.device("/cpu:0"):
+    #    model = create_model(2)
+    #model = multi_gpu_model(model,gpus=[0,1])
 
     logging = TensorBoard(log_dir=log_dir)
     checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
@@ -59,6 +57,9 @@ def _main():
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:
 
+        model.compile(optimizer=Adam(lr=1e-3), loss={
+            # use custom fcn_loss_impossible Lambda layer.
+            'loss': lambda y_true, y_pred: y_pred})
 
         batch_size = args.batch_size
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
