@@ -28,6 +28,8 @@ def _main():
                         default="/tmp/logs/000/")
     parser.add_argument('--batch_size', help='log dir ', type=int,
                         default=1)
+    parser.add_argument('--tv_ratio', help='log dir ', type=float,
+                        default=0.1)
     args = parser.parse_args()
 
     log_dir = args.log_dir
@@ -42,7 +44,7 @@ def _main():
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, verbose=1)
     early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1)
 
-    val_split = 0.5
+    val_split = 0.1
     import glob
     lines = glob.glob(args.data_path)
 
