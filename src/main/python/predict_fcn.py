@@ -189,7 +189,11 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
             image_data.append(image)
 
             label = 0 if "flawInbox" in fn else 1
-            weight = 0.1 if "flawOutbox" in fn else 1.0
+            if "flawInbox" in fn:
+                weight = 1.0
+            elif "normal" in fn:
+                weight = 0.07
+            else: weight = 0.01
             fid_data.append(fid)
             label_data.append(label)
             weight_data.append(weight)
