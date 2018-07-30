@@ -4,7 +4,7 @@ Retrain the YOLO model for your own dataset.
 
 import numpy as np
 import keras.backend as K
-from keras.layers import Input, Lambda
+from keras.layers import Input, Lambda, Activation
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
@@ -14,61 +14,71 @@ import os
 from keras.utils.training_utils import multi_gpu_model
 
 from keras_preprocessing.image import load_img
+from sklearn.metrics import roc_auc_score, average_precision_score, precision_recall_curve
+from tensorflow.core.framework.types_pb2 import DataType
 
 from fcn.model1 import fcn_impossable, fcn_loss_impossible, fcn, weighted_classification_loss
 import argparse as ap
-os.environ["CUDA_VISIBLE_DEVICES"]="1" 
 
 def _main():
     parser = ap.ArgumentParser()
     #argument_default="/Users/huanghaihun/PycharmProjects/keras-yolo3/data/xl_part1/*/*.jpg"
     parser.add_argument('--data_path',  help='data path string', type=str,
                         default="/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/produce_img/破边/*.jpg")
-    parser.add_argument('--log_dir', help='log dir ', type=str,
-                        default="/tmp/logs/000/")
+    parser.add_argument('--weight', help='weight_file ', type=str,
+                        default="/tmp/logs/000/ep003-loss10.568-val_loss152353.547.h5")
     parser.add_argument('--batch_size', help='log dir ', type=int,
                         default=1)
+    parser.add_argument('--tv_ratio', help='log dir ', type=float,
+                        default=0.9)
     args = parser.parse_args()
 
-    log_dir = args.log_dir
-    model = create_model(2)
-    #with tf.device("/cpu:0"):
-    #    model = create_model(2)
-    #model = multi_gpu_model(model,gpus=[0,1])
+    with tf.device("/cpu:0"):
+        model = create_model(2)
 
-    logging = TensorBoard(log_dir=log_dir)
-    checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
-                                 monitor='val_loss', save_weights_only=True, save_best_only=True, period=3)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, verbose=1)
-    early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1)
+    # yLabel = Input(shape=(2,))
 
-    val_split = 0.5
+    # model = multi_gpu_model(model,gpus=[0,1])
+
+
+    val_split = args.tv_ratio
     import glob
     lines = glob.glob(args.data_path)
-
+    import numpy as np
     np.random.seed(10101)
     np.random.shuffle(lines)
     np.random.seed(None)
     num_val = int(len(lines) * val_split)
     num_train = len(lines) - num_val
-
+    collector = []
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:
-        model.compile(optimizer=Adam(lr=1e-3), loss={
-            # use custom fcn_loss_impossible Lambda layer.
-            'loss': lambda y_true, y_pred: y_pred})
-
+        # model.compile(optimizer=Adam(lr=1e-3, ), loss='categorical_crossentropy', metrics=['accuracy'])
         batch_size = args.batch_size
-        print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=True),
-                            steps_per_epoch=max(1, num_train // batch_size),
-                            validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),
-                            validation_steps=max(1, num_val // batch_size),
-                            epochs=50,
-                            initial_epoch=0,
-                            callbacks=[logging, checkpoint, reduce_lr, early_stopping])
-        model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+        print('evluate on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
+        model.load_weights(args.weight)
+        import math
+        pred_list, y_list, fid_list = model.predict_generator(data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),steps=math.ceil(1*num_val/batch_size))
+        # metric = model.evaluate_generator(data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),steps=1)
+        print(collector)
+
+        # import numpy as np
+        import pandas as pd
+
+        pred_list = pred_list[:, 1]
+        y_list = y_list[:, 1]
+        fn = "/tmp/xx"
+        ds = pd.DataFrame(data=[pred_list,y_list,fid_list[:,0]])
+        ds.transpose().to_csv(fn)
+
+        roc_auc = roc_auc_score(y_list, pred_list)
+        avg_prec = average_precision_score(y_list, pred_list)
+        mean_ap = precision_recall_curve(y_list, pred_list, pos_label=1)
+        print("roc_auc {}, avg_prec {}, mean_ap {}".format(roc_auc, avg_prec, mean_ap))
+
+
+
 
 
 def test():
@@ -111,11 +121,12 @@ def create_model(num_classes=2,):
     K.clear_session()  # get a new session
     image_input = Input(shape=(None, None, 3))
 
-    y_true = [Input(shape=(num_classes,)),
-              Input(shape=(1,)),]
+
+    label = Input(shape=(num_classes,))
+    fid = Input(shape=(1,),dtype=tf.string)
     fcn_model = fcn(image_input, num_classes=num_classes)
-    loss = Lambda(weighted_classification_loss,output_shape=(1,), name="loss")([fcn_model.output, *y_true])
-    model = Model([image_input, *y_true], loss)
+    output = Activation('sigmoid')(fcn_model.output)
+    model = Model([image_input,label,fid], [output, label , fid])
     return model
 
 def create_impossible_model(num_classes=2, ):
@@ -167,25 +178,28 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
         image_data = []
         label_data = []
         weight_data = []
+        fid_data = []
         for b in range(batch_size):
             if i == 0:
                 np.random.shuffle(annotation_lines)
             fn = annotation_lines[i]
             image = load_img(fn)
+            fid = fn.split("/")[-1][:23]
             image = iu.random_image(image, (512,512), random=is_train, )
             image_data.append(image)
 
             label = 0 if "flawInbox" in fn else 1
             weight = 0.1 if "flawOutbox" in fn else 1.0
+            fid_data.append(fid)
             label_data.append(label)
             weight_data.append(weight)
             i = (i + 1) % n
         image_data = np.array(image_data)
 
-        image_data, label_data, weight_data \
-            = [np.stack(x) for x in [image_data, label_data, weight_data]]
+        image_data, label_data, weight_data, fid_data \
+            = [np.stack(x) for x in [image_data, label_data, weight_data, fid_data]]
 
-        arr = [image_data, _one_hot(label_data), weight_data]
+        arr = [image_data, _one_hot(label_data), fid_data]
 
         yield arr, np.zeros(batch_size)
 
