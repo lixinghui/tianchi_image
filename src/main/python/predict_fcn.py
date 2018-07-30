@@ -29,6 +29,8 @@ def _main():
                         default="/tmp/logs/000/ep003-loss10.568-val_loss152353.547.h5")
     parser.add_argument('--batch_size', help='log dir ', type=int,
                         default=1)
+    parser.add_argument('--tv_ratio', help='log dir ', type=float,
+                        default=0.9)
     args = parser.parse_args()
 
     with tf.device("/cpu:0"):
@@ -39,7 +41,7 @@ def _main():
     # model = multi_gpu_model(model,gpus=[0,1])
 
 
-    val_split = 1.0
+    val_split = args.tv_ratio
     import glob
     lines = glob.glob(args.data_path)
     import numpy as np
