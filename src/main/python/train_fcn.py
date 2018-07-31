@@ -83,14 +83,11 @@ def _main():
     num_val = int(len(lines) * val_split)
     num_train = len(lines) - num_val
 
-
-
+    import keras.losses
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:
-        train_model.compile(optimizer=Adam(lr=1e-3), loss={
-            # use custom fcn_loss_impossible Lambda layer.
-            'loss': lambda y_true, y_pred: y_pred})
+        train_model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy' )
 
         batch_size = args.batch_size
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
@@ -178,14 +175,16 @@ def create_model_mobile_train(num_classes=2, ):
     y_true = [Input(shape=(num_classes,)),
               Input(shape=(1,)),]
     model = MobileNetV2( include_top=False, weights=None, input_tensor=image_input)
-    x = Flatten(model.output)
+    x = Flatten()(model.output)
     x = Dense(128,activation='relu')(x)
     x = Dense(num_classes)(x)
 
-    loss = Lambda(weighted_classification_loss, output_shape=(1,), name="loss")([x, *y_true])
-    train_model = Model([image_input, *y_true], loss)
+    # loss = Lambda(weighted_classification_loss, output_shape=(1,), name="loss")([x, *y_true])
+    # train_model = Model([image_input, *y_true], loss)
+
 
     output = Activation('softmax')(x)
+    train_model = Model([image_input], output)
     predict_model = Model([image_input, *y_true], [output, y_true[0]])
 
 
@@ -266,7 +265,7 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
 
         arr = [image_data, _one_hot(label_data), weight_data]
 
-        yield arr, np.zeros(batch_size)
+        yield image_data, _one_hot(label_data)
 
 
 if __name__ == '__main__':
