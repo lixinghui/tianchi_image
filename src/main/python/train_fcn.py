@@ -66,6 +66,7 @@ def _main():
     val_split = 0.1
     import glob
     lines = glob.glob(args.data_path)
+    np.random.seed(10101)
     lines = sample_by_response(lines, {"normal": 0.1})
 
     lines = np.sort(lines)

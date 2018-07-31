@@ -49,6 +49,7 @@ def _main():
     val_split = args.tv_ratio
     import glob
     lines = glob.glob(args.data_path)
+    np.random.seed(10101)
     lines = sample_by_response(lines, {"normal": 0.1})
 
     import numpy as np
@@ -57,7 +58,7 @@ def _main():
     np.random.shuffle(lines)
     np.random.seed(None)
 
-    lines = lines[:55]
+    lines = lines[:10]
     print('\n'.join(lines))
     num_val = int(len(lines) * val_split)
     num_train = len(lines) - num_val
