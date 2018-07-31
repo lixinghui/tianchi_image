@@ -197,13 +197,9 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True, d
         label_data = []
         weight_data = []
         fid_data = []
-        while len(fid_data) < batch_size:
+        for _ in range(batch_size):
             if i == 0:
                 np.random.shuffle(annotation_lines)
-
-            #random drop positive sample
-            if "normal" in fn and rand() < drop_pos:
-                continue
 
             fn = annotation_lines[i]
             image = load_img(fn)
