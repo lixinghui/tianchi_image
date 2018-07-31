@@ -70,7 +70,7 @@ def _main():
         print('evluate on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
         model.load_weights(args.weight)
         import math
-        pred_list, y_list, fid_list = model.predict_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),steps=math.ceil(1*num_val/batch_size))
+        pred_list, y_list, fid_list = model.predict_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),steps=math.ceil(1*num_train/batch_size))
         # pred_list, y_list, fid_list = model.predict_generator(data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),steps=math.ceil(1*num_val/batch_size))
 
         # metric = model.evaluate_generator(data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),steps=1)
