@@ -18,7 +18,10 @@ from keras_preprocessing.image import load_img
 
 from fcn.model1 import fcn_impossable, fcn_loss_impossible, fcn, weighted_classification_loss
 import argparse as ap
-os.environ["CUDA_VISIBLE_DEVICES"]="1" 
+
+from fcn.utils import rand
+
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def _main():
     parser = ap.ArgumentParser()
@@ -160,7 +163,7 @@ def get_one_hot(targets, nb_classes):
     return res.reshape(list(targets.shape) + [nb_classes])
 
 
-def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
+def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True, drop_pos=0.1):
     '''data generator for fit_generator'''
     n = len(annotation_lines)
     i = 0
@@ -174,13 +177,14 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
         weight_data = []
         for b in range(batch_size):
             #random drop positive sample
+            fn = annotation_lines[i]
             if "normal" in fn and rand() < drop_pos:
                 i = (i + 1) % n
                 continue
 
             if i == 0:
                 np.random.shuffle(annotation_lines)
-            fn = annotation_lines[i]
+
             image = load_img(fn)
             image = iu.random_image(image, (512,512), random=is_train, )
             image_data.append(image)
