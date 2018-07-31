@@ -70,14 +70,14 @@ def _main():
 
     lines = glob.glob(args.data_path)
     np.random.seed(10101)
-    # lines = sample_by_response(lines, {"normal": 0.1}) //TODO
+    lines = sample_by_response(lines, {"normal": 0.1})
 
     lines = np.sort(lines)
     np.random.seed(10101)
     np.random.shuffle(lines)
     np.random.seed(None)
 
-    lines = lines[:15]#TODO
+    lines = lines[:16]#TODO
 
     print('\n'.join(lines))
     num_val = int(len(lines) * val_split)
