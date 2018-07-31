@@ -179,7 +179,7 @@ def create_model_mobile_train(num_classes=2, ):
               Input(shape=(1,)),]
     model = MobileNetV2( include_top=False, weights=None, input_tensor=image_input)
     x = Reshape([-1])(model.output)
-    x = Dense(1024,activation='relu')(x)
+    x = Dense(128,activation='relu')(x)
     x = Dense(num_classes)(x)
 
     loss = Lambda(weighted_classification_loss, output_shape=(1,), name="loss")([x, *y_true])
