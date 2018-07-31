@@ -71,6 +71,9 @@ def _main():
     np.random.seed(10101)
     np.random.shuffle(lines)
     np.random.seed(None)
+
+    lines = lines[:55]
+
     num_val = int(len(lines) * val_split)
     num_train = len(lines) - num_val
 
@@ -87,7 +90,8 @@ def _main():
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
         model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=True),
                             steps_per_epoch=max(1, num_train // batch_size),
-                            validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),
+                            validation_data=data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
+                            # validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),
                             validation_steps=max(1, num_val // batch_size),
                             epochs=50,
                             initial_epoch=0,
@@ -209,7 +213,7 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True, d
                 np.random.shuffle(annotation_lines)
             fn = annotation_lines[i]
 
-            if "normal" in fn and rand() < drop_pos:
+            if "normal" in fn and rand() > drop_pos:
                 i = (i + 1) % n
                 continue
 
