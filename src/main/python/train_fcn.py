@@ -4,7 +4,8 @@ Retrain the YOLO model for your own dataset.
 
 import numpy as np
 import keras.backend as K
-from keras.layers import Input, Lambda
+from keras.applications import MobileNetV2
+from keras.layers import Input, Lambda, Reshape, Dense
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
@@ -30,10 +31,16 @@ def _main():
                         default=1)
     parser.add_argument('--tv_ratio', help='log dir ', type=float,
                         default=0.1)
+    parser.add_argument('--model', help='log dir ', type=str,
+                        default="mobile")
     args = parser.parse_args()
 
     log_dir = args.log_dir
-    model = create_model(2)
+    if args.model == "mobile""":
+        model = create_model_mobile(2)
+    elif args.model == "fcn":
+        model = create_model(2)
+
     #with tf.device("/cpu:0"):
     #    model = create_model(2)
     #model = multi_gpu_model(model,gpus=[0,1])
@@ -120,6 +127,19 @@ def create_model(num_classes=2,):
     model = Model([image_input, *y_true], loss)
     return model
 
+def create_model_mobile(num_classes=2,):
+    K.clear_session()  # get a new session
+    image_input = Input(shape=(512, 512, 3))
+    y_true = [Input(shape=(num_classes,)),
+              Input(shape=(1,)),]
+    model = MobileNetV2( include_top=False, weights=None, input_tensor=image_input)
+    x = Reshape([-1])(model.output)
+    x = Dense(num_classes)(x)
+
+    loss = Lambda(weighted_classification_loss, output_shape=(1,), name="loss")([x, *y_true])
+    model = Model([image_input, *y_true], loss)
+    return model
+
 def create_impossible_model(num_classes=2, ):
     '''create the training model'''
     K.clear_session()  # get a new session
@@ -169,7 +189,7 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
         image_data = []
         label_data = []
         weight_data = []
-        for b in range(batch_size):
+        while len(image_data) < batch_size:
             if i == 0:
                 np.random.shuffle(annotation_lines)
             fn = annotation_lines[i]

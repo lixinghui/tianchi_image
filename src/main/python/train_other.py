@@ -175,7 +175,7 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True, d
         image_data = []
         label_data = []
         weight_data = []
-        for b in range(batch_size):
+        while len():
             #random drop positive sample
             fn = annotation_lines[i]
             if "normal" in fn and rand() < drop_pos:
