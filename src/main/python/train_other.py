@@ -18,7 +18,7 @@ from keras_preprocessing.image import load_img
 
 from fcn.model1 import fcn_impossable, fcn_loss_impossible, fcn, weighted_classification_loss
 import argparse as ap
-os.environ["CUDA_VISIBLE_DEVICES"]="1" 
+os.environ["CUDA_VISIBLE_DEVICES"]="0" 
 
 def _main():
     parser = ap.ArgumentParser()
