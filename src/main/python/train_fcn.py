@@ -94,7 +94,7 @@ def _main():
 
         batch_size = args.batch_size
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-        train_model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=True),
+        train_model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
                             steps_per_epoch=max(1, num_train // batch_size),
                             validation_data=data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
                             # validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False), #TODO
