@@ -31,7 +31,7 @@ def _main():
     parser.add_argument('--data_path',  help='data path string', type=str,
                         default="/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/produce_img/破边/*.jpg")
     parser.add_argument('--weight', help='weight_file ', type=str,
-                        default="/tmp/logs/000/ep003-loss10.568-val_loss152353.547.h5")
+                        default="/tmp/logs/000/mobileep003-loss0.000-val_loss0.000.h5")
     parser.add_argument('--batch_size', help='log dir ', type=int,
                         default=1)
     parser.add_argument('--tv_ratio', help='log dir ', type=float,
@@ -48,6 +48,7 @@ def _main():
 
     val_split = args.tv_ratio
     import glob
+    import numpy as np
     lines = glob.glob(args.data_path)
     np.random.seed(10101)
     lines = sample_by_response(lines, {"normal": 0.1})
@@ -154,7 +155,7 @@ def create_model(num_classes=2,):
     x = Reshape([-1])(model.output)
     x = Dense(num_classes)(x)
 
-    output = Activation('sigmoid')(x)
+    output = Activation('softmax')(x)
     model = Model([image_input,label,fid], [output, label, fid])
     return model
 
