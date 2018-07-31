@@ -70,14 +70,14 @@ def _main():
 
     lines = glob.glob(args.data_path)
     np.random.seed(10101)
-    # lines = sample_by_response(lines, {"normal": 0.07})
+    lines = sample_by_response(lines, {"normal": 0.07})
 
     lines = np.sort(lines)
     np.random.seed(10101)
     np.random.shuffle(lines)
     np.random.seed(None)
 
-    lines = lines[:16]#TODO
+    lines = lines[:16] #TODO
 
     print('\n'.join(lines))
     num_val = int(len(lines) * val_split)
@@ -102,8 +102,8 @@ def _main():
                             epochs=50,
                             initial_epoch=0,
                             callbacks=[logging, checkpoint, reduce_lr, early_stopping])
-        #train_model.save_weights(log_dir + 'trained_weights_stage_1.h5')
-        predict_model.load_weights(log_dir + 'trained_weights_stage_1.h5')
+        train_model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+        # predict_model.load_weights(log_dir + 'trained_weights_stage_1.h5')
 
         xx = predict_model.predict_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
                                         steps=np.math.ceil(1 * num_train / batch_size))
