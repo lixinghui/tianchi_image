@@ -65,6 +65,11 @@ def _main():
     num_train = len(lines) - num_val
     collector = []
 
+    def evaluate():
+        pred_list, y_list, fid_list = model.predict_generator(
+            data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
+            steps=math.ceil(1 * num_train / batch_size))
+
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:

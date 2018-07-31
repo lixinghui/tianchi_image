@@ -5,7 +5,7 @@ Retrain the YOLO model for your own dataset.
 import numpy as np
 import keras.backend as K
 from keras.applications import MobileNetV2
-from keras.layers import Input, Lambda, Reshape, Dense
+from keras.layers import Input, Lambda, Reshape, Dense, Activation
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
@@ -15,6 +15,7 @@ import os
 from keras.utils.training_utils import multi_gpu_model
 
 from keras_preprocessing.image import load_img
+from sklearn.metrics import roc_auc_score, average_precision_score
 
 from fcn.model1 import fcn_impossable, fcn_loss_impossible, fcn, weighted_classification_loss
 import argparse as ap
@@ -49,7 +50,7 @@ def _main():
 
     log_dir = args.log_dir
     if args.model == "mobile""":
-        model = create_model_mobile(2)
+        train_model, predict_model = create_model_mobile_train(2)
     elif args.model == "fcn":
         model = create_model(2)
 
@@ -87,21 +88,39 @@ def _main():
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:
-        model.compile(optimizer=Adam(lr=1e-3), loss={
+        train_model.compile(optimizer=Adam(lr=1e-3), loss={
             # use custom fcn_loss_impossible Lambda layer.
             'loss': lambda y_true, y_pred: y_pred})
 
         batch_size = args.batch_size
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=True),
-                            steps_per_epoch=max(1, num_train // batch_size),
-                            validation_data=data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
-                            # validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False), #TODO
-                            validation_steps=max(1, num_val // batch_size),
-                            epochs=50,
-                            initial_epoch=0,
-                            callbacks=[logging, checkpoint, reduce_lr, early_stopping])
-        model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+        # train_model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=True),
+        #                     steps_per_epoch=max(1, num_train // batch_size),
+        #                     validation_data=data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
+        #                     # validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False), #TODO
+        #                     validation_steps=max(1, num_val // batch_size),
+        #                     epochs=50,
+        #                     initial_epoch=0,
+        #                     callbacks=[logging, checkpoint, reduce_lr, early_stopping])
+        # train_model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+        train_model.load_weights(log_dir + 'trained_weights_stage_1.h5')
+
+        xx = predict_model.predict_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
+                                        steps=np.math.ceil(1 * num_train / batch_size))
+        pred_list, y_list = xx
+
+        def evaluate(pred_list, y_list):
+            pred_list = pred_list[:, 1]
+            y_list = y_list[:, 1]
+            fn = "/tmp/xx"
+            ds = pd.DataFrame(data=[pred_list, y_list, ])
+            ds.transpose().to_csv(fn)
+
+            roc_auc = roc_auc_score(y_list, pred_list)
+            avg_prec = average_precision_score(y_list, pred_list)
+            print("roc_auc {}, avg_prec {} ".format(roc_auc, avg_prec))
+
+        evaluate(pred_list, y_list)
 
 
 def test():
@@ -151,7 +170,7 @@ def create_model(num_classes=2,):
     model = Model([image_input, *y_true], loss)
     return model
 
-def create_model_mobile(num_classes=2,):
+def create_model_mobile_train(num_classes=2, ):
     K.clear_session()  # get a new session
     image_input = Input(shape=(512, 512, 3))
     y_true = [Input(shape=(num_classes,)),
@@ -161,8 +180,14 @@ def create_model_mobile(num_classes=2,):
     x = Dense(num_classes)(x)
 
     loss = Lambda(weighted_classification_loss, output_shape=(1,), name="loss")([x, *y_true])
-    model = Model([image_input, *y_true], loss)
-    return model
+    train_model = Model([image_input, *y_true], loss)
+
+    output = Activation('softmax')(x)
+    predict_model = Model([image_input, y_true[0]], [output, y_true[0]])
+
+
+    return train_model, predict_model
+
 
 def create_impossible_model(num_classes=2, ):
     '''create the training model'''
