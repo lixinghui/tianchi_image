@@ -42,7 +42,7 @@ def _main():
     parser.add_argument('--batch_size', help='log dir ', type=int,
                         default=1)
     parser.add_argument('--tv_ratio', help='log dir ', type=float,
-                        default=0.1)
+                        default=0.0)
     parser.add_argument('--model', help='log dir ', type=str,
                         default="mobile")
     args = parser.parse_args()
@@ -68,11 +68,12 @@ def _main():
     lines = glob.glob(args.data_path)
     lines = sample_by_response(lines, {"normal": 0.1})
 
+    lines = np.sort(lines)
     np.random.seed(10101)
     np.random.shuffle(lines)
     np.random.seed(None)
 
-    lines = lines[:55]#TODO
+    lines = lines[:8]#TODO
 
     print('\n'.join(lines))
     num_val = int(len(lines) * val_split)

@@ -35,7 +35,7 @@ def _main():
     parser.add_argument('--batch_size', help='log dir ', type=int,
                         default=1)
     parser.add_argument('--tv_ratio', help='log dir ', type=float,
-                        default=0.9)
+                        default=0.0)
     args = parser.parse_args()
 
     with tf.device("/cpu:0"):
@@ -52,6 +52,7 @@ def _main():
     lines = sample_by_response(lines, {"normal": 0.1})
 
     import numpy as np
+    lines = np.sort(lines)
     np.random.seed(10101)
     np.random.shuffle(lines)
     np.random.seed(None)
