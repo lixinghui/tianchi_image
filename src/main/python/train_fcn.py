@@ -74,7 +74,7 @@ def _main():
     np.random.shuffle(lines)
     np.random.seed(None)
 
-    lines = lines[:8]#TODO
+    lines = lines[:15]#TODO
 
     print('\n'.join(lines))
     num_val = int(len(lines) * val_split)
