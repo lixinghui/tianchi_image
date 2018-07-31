@@ -70,7 +70,7 @@ def _main():
 
     lines = glob.glob(args.data_path)
     np.random.seed(10101)
-    lines = sample_by_response(lines, {"normal": 0.1})
+    # lines = sample_by_response(lines, {"normal": 0.07})
 
     lines = np.sort(lines)
     np.random.seed(10101)
@@ -179,6 +179,7 @@ def create_model_mobile_train(num_classes=2, ):
               Input(shape=(1,)),]
     model = MobileNetV2( include_top=False, weights=None, input_tensor=image_input)
     x = Reshape([-1])(model.output)
+    x = Dense(1024,activation='relu')(x)
     x = Dense(num_classes)(x)
 
     loss = Lambda(weighted_classification_loss, output_shape=(1,), name="loss")([x, *y_true])
