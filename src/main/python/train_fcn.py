@@ -5,7 +5,7 @@ Retrain the YOLO model for your own dataset.
 import numpy as np
 import keras.backend as K
 from keras.applications import MobileNetV2
-from keras.layers import Input, Lambda, Reshape, Dense, Activation
+from keras.layers import Input, Lambda, Reshape, Dense, Activation, Flatten
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
@@ -178,7 +178,7 @@ def create_model_mobile_train(num_classes=2, ):
     y_true = [Input(shape=(num_classes,)),
               Input(shape=(1,)),]
     model = MobileNetV2( include_top=False, weights=None, input_tensor=image_input)
-    x = Reshape([-1])(model.output)
+    x = Flatten(model.output)
     x = Dense(128,activation='relu')(x)
     x = Dense(num_classes)(x)
 
