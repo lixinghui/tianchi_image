@@ -23,6 +23,15 @@ from fcn.utils import rand
 
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
+def sample_by_response(file_list, table):
+    def f(fn):
+        for(k,v) in table.items():
+            if k in fn:
+                return rand() < v
+        return True
+
+    return [x for x in filter(f, file_list)]
+
 def _main():
     parser = ap.ArgumentParser()
     #argument_default="/Users/huanghaihun/PycharmProjects/keras-yolo3/data/xl_part1/*/*.jpg"
@@ -57,12 +66,15 @@ def _main():
     val_split = 0.1
     import glob
     lines = glob.glob(args.data_path)
+    lines = sample_by_response(lines, {"normal": 0.1})
 
     np.random.seed(10101)
     np.random.shuffle(lines)
     np.random.seed(None)
     num_val = int(len(lines) * val_split)
     num_train = len(lines) - num_val
+
+
 
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
@@ -180,7 +192,7 @@ def get_one_hot(targets, nb_classes):
     return res.reshape(list(targets.shape) + [nb_classes])
 
 
-def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True, drop_pos=0.07):
+def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True, drop_pos=0.0):
     '''data generator for fit_generator'''
     n = len(annotation_lines)
     i = 0
