@@ -22,6 +22,7 @@ from fcn.model1 import fcn_impossable, fcn_loss_impossible, fcn, weighted_classi
 import argparse as ap
 
 from fcn.utils import rand
+from train_fcn import sample_by_response
 
 
 def _main():
@@ -48,6 +49,8 @@ def _main():
     val_split = args.tv_ratio
     import glob
     lines = glob.glob(args.data_path)
+    lines = sample_by_response(lines, {"normal": 0.1})
+
     import numpy as np
     np.random.seed(10101)
     np.random.shuffle(lines)
@@ -63,7 +66,9 @@ def _main():
         print('evluate on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
         model.load_weights(args.weight)
         import math
-        pred_list, y_list, fid_list = model.predict_generator(data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),steps=math.ceil(1*num_val/batch_size))
+        pred_list, y_list, fid_list = model.predict_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),steps=math.ceil(1*num_val/batch_size))
+        # pred_list, y_list, fid_list = model.predict_generator(data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),steps=math.ceil(1*num_val/batch_size))
+
         # metric = model.evaluate_generator(data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),steps=1)
         print(collector)
 

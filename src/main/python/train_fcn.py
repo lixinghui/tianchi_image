@@ -72,7 +72,7 @@ def _main():
     np.random.shuffle(lines)
     np.random.seed(None)
 
-    lines = lines[:55]
+    lines = lines[:55]//TODO
 
     num_val = int(len(lines) * val_split)
     num_train = len(lines) - num_val
@@ -91,7 +91,7 @@ def _main():
         model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=True),
                             steps_per_epoch=max(1, num_train // batch_size),
                             validation_data=data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
-                            # validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False),
+                            # validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False), //TODO
                             validation_steps=max(1, num_val // batch_size),
                             epochs=50,
                             initial_epoch=0,
