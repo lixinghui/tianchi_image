@@ -94,22 +94,23 @@ def _main():
 
         batch_size = args.batch_size
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-        # train_model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=True),
-        #                     steps_per_epoch=max(1, num_train // batch_size),
-        #                     validation_data=data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
-        #                     # validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False), #TODO
-        #                     validation_steps=max(1, num_val // batch_size),
-        #                     epochs=50,
-        #                     initial_epoch=0,
-        #                     callbacks=[logging, checkpoint, reduce_lr, early_stopping])
-        # train_model.save_weights(log_dir + 'trained_weights_stage_1.h5')
-        train_model.load_weights(log_dir + 'trained_weights_stage_1.h5')
+        train_model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=True),
+                            steps_per_epoch=max(1, num_train // batch_size),
+                            validation_data=data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
+                            # validation_data=data_generator_wrapper(lines[num_train:], batch_size, num_class=2, is_train=False), #TODO
+                            validation_steps=max(1, num_val // batch_size),
+                            epochs=50,
+                            initial_epoch=0,
+                            callbacks=[logging, checkpoint, reduce_lr, early_stopping])
+        train_model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+        # train_model.load_weights(log_dir + 'trained_weights_stage_1.h5')
 
         xx = predict_model.predict_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
                                         steps=np.math.ceil(1 * num_train / batch_size))
         pred_list, y_list = xx
 
         def evaluate(pred_list, y_list):
+            import pandas as pd
             pred_list = pred_list[:, 1]
             y_list = y_list[:, 1]
             fn = "/tmp/xx"
@@ -183,7 +184,7 @@ def create_model_mobile_train(num_classes=2, ):
     train_model = Model([image_input, *y_true], loss)
 
     output = Activation('softmax')(x)
-    predict_model = Model([image_input, y_true[0]], [output, y_true[0]])
+    predict_model = Model([image_input, *y_true], [output, y_true[0]])
 
 
     return train_model, predict_model
