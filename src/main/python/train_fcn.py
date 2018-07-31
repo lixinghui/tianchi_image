@@ -70,7 +70,7 @@ def _main():
 
     lines = glob.glob(args.data_path)
     np.random.seed(10101)
-    lines = sample_by_response(lines, {"normal": 0.1})
+    # lines = sample_by_response(lines, {"normal": 0.1}) //TODO
 
     lines = np.sort(lines)
     np.random.seed(10101)
@@ -102,12 +102,13 @@ def _main():
                             epochs=50,
                             initial_epoch=0,
                             callbacks=[logging, checkpoint, reduce_lr, early_stopping])
-        train_model.save_weights(log_dir + 'trained_weights_stage_1.h5')
-        # train_model.load_weights(log_dir + 'trained_weights_stage_1.h5')
+        #train_model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+        predict_model.load_weights(log_dir + 'trained_weights_stage_1.h5')
 
         xx = predict_model.predict_generator(data_generator_wrapper(lines[:num_train], batch_size, num_class=2, is_train=False),
                                         steps=np.math.ceil(1 * num_train / batch_size))
         pred_list, y_list = xx
+        print(xx)
 
         def evaluate(pred_list, y_list):
             import pandas as pd
@@ -227,7 +228,7 @@ def get_one_hot(targets, nb_classes):
     return res.reshape(list(targets.shape) + [nb_classes])
 
 
-def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True, drop_pos=0.0):
+def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
     '''data generator for fit_generator'''
     n = len(annotation_lines)
     i = 0
@@ -239,14 +240,10 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True, d
         image_data = []
         label_data = []
         weight_data = []
-        while len(image_data) < batch_size:
+        for _ in range(batch_size):
             if i == 0:
                 np.random.shuffle(annotation_lines)
             fn = annotation_lines[i]
-
-            if "normal" in fn and rand() > drop_pos:
-                i = (i + 1) % n
-                continue
 
             image = load_img(fn)
             image = iu.random_image(image, (512,512), random=is_train, )
