@@ -160,7 +160,7 @@ def weighted_classification_loss(args, ):
     y_1, \
     weight = args
 
-    c1_loss = K.binary_crossentropy(y_1, pred_1, True) * weight
+    c1_loss = K.categorical_crossentropy(y_1, pred_1, True) * weight
 
     loss = K.mean(c1_loss,keepdims=True)
     return loss
