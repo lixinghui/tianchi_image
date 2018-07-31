@@ -55,9 +55,13 @@ def _main():
     np.random.seed(10101)
     np.random.shuffle(lines)
     np.random.seed(None)
+
+    lines = lines[:55]
+
     num_val = int(len(lines) * val_split)
     num_train = len(lines) - num_val
     collector = []
+
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:
