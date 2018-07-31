@@ -21,6 +21,9 @@ from tensorflow.core.framework.types_pb2 import DataType
 from fcn.model1 import fcn_impossable, fcn_loss_impossible, fcn, weighted_classification_loss
 import argparse as ap
 
+from fcn.utils import rand
+
+
 def _main():
     parser = ap.ArgumentParser()
     #argument_default="/Users/huanghaihun/PycharmProjects/keras-yolo3/data/xl_part1/*/*.jpg"
@@ -181,7 +184,7 @@ def get_one_hot(targets, nb_classes):
     return res.reshape(list(targets.shape) + [nb_classes])
 
 
-def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
+def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True, drop_pos=0.1):
     '''data generator for fit_generator'''
     n = len(annotation_lines)
     i = 0
@@ -194,9 +197,14 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
         label_data = []
         weight_data = []
         fid_data = []
-        for b in range(batch_size):
+        while len(fid_data) < batch_size:
             if i == 0:
                 np.random.shuffle(annotation_lines)
+
+            #random drop positive sample
+            if "normal" in fn and rand() < drop_pos:
+                continue
+
             fn = annotation_lines[i]
             image = load_img(fn)
             fid = fn.split("/")[-1][:23]
@@ -204,10 +212,11 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
             image_data.append(image)
 
             label = 0 if "flawInbox" in fn else 1
+
             if "flawInbox" in fn:
                 weight = 1.0
             elif "normal" in fn:
-                weight = 0.07
+                weight = 1.
             else: weight = 0.01
             fid_data.append(fid)
             label_data.append(label)
