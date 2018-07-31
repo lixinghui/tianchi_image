@@ -57,7 +57,7 @@ def _main():
     np.random.seed(None)
 
     lines = lines[:55]
-
+    print('\n'.join(lines))
     num_val = int(len(lines) * val_split)
     num_train = len(lines) - num_val
     collector = []

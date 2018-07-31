@@ -74,6 +74,7 @@ def _main():
 
     lines = lines[:55]#TODO
 
+    print('\n'.join(lines))
     num_val = int(len(lines) * val_split)
     num_train = len(lines) - num_val
 
