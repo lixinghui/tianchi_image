@@ -128,7 +128,7 @@ def random_image(image, input_shape, random=False, jitter=.3, hue=.1, sat=1.5, v
         image = image.resize((nw, nh), Image.BICUBIC)
         new_image = Image.new('RGB', (w, h), (128, 128, 128))
         new_image.paste(image, (dx, dy))
-        image_data = np.array(new_image) / 255.
+        image_data = np.array(new_image) / 128. -1
 
         return image_data
 

@@ -4,7 +4,7 @@ Retrain the YOLO model for your own dataset.
 
 import numpy as np
 import keras.backend as K
-from keras.applications import MobileNetV2
+from keras.applications import VGG16
 from keras.layers import Input, Lambda, Reshape, Dense, Activation, Flatten
 from keras.models import Model
 from keras.optimizers import Adam
@@ -50,7 +50,7 @@ def _main():
 
     log_dir = args.log_dir
     if args.model == "mobile""":
-        train_model, predict_model = create_model_mobile_train(2)
+        train_model, predict_model = create_model_mobile_train()
     elif args.model == "fcn":
         model = create_model(2)
 
@@ -64,7 +64,7 @@ def _main():
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, verbose=1)
     early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1)
 
-    val_split = 0.1
+    val_split = args.tv_ratio
     import glob
     import numpy as np
 
@@ -87,7 +87,7 @@ def _main():
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:
-        train_model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy' )
+        train_model.compile(optimizer=Adam(lr=1e-3), loss='binary_crossentropy' )
 
         batch_size = args.batch_size
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
@@ -169,12 +169,32 @@ def create_model(num_classes=2,):
     model = Model([image_input, *y_true], loss)
     return model
 
-def create_model_mobile_train(num_classes=2, ):
+def create_model_mobile_train( ):
     K.clear_session()  # get a new session
     image_input = Input(shape=(512, 512, 3))
-    y_true = [Input(shape=(num_classes,)),
-              Input(shape=(1,)),]
-    model = MobileNetV2( include_top=False, weights=None, input_tensor=image_input)
+    y_true = Input(shape=(1,))
+    model = VGG16( include_top=False, weights=None, input_tensor=image_input)
+    x = Flatten()(model.output)
+    x = Dense(128,activation='relu')(x)
+    x = Dense(1)(x)
+
+    # loss = Lambda(weighted_classification_loss, output_shape=(1,), name="loss")([x, *y_true])
+    # train_model = Model([image_input, *y_true], loss)
+
+
+    output = Activation('sigmoid')(x)
+    train_model = Model([image_input], output)
+    predict_model = Model([image_input, y_true], [output, y_true])
+
+
+    return train_model, predict_model
+
+
+def create_model_mobile_train_m(num_classes=2, ):
+    K.clear_session()  # get a new session
+    image_input = Input(shape=(512, 512, 3))
+    y_true = Input(shape=(num_classes,))
+    model = VGG16( include_top=False, weights=None, input_tensor=image_input)
     x = Flatten()(model.output)
     x = Dense(128,activation='relu')(x)
     x = Dense(num_classes)(x)
@@ -185,11 +205,10 @@ def create_model_mobile_train(num_classes=2, ):
 
     output = Activation('softmax')(x)
     train_model = Model([image_input], output)
-    predict_model = Model([image_input, *y_true], [output, y_true[0]])
+    predict_model = Model([image_input, y_true], [output, y_true])
 
 
     return train_model, predict_model
-
 
 def create_impossible_model(num_classes=2, ):
     '''create the training model'''
@@ -265,7 +284,7 @@ def data_generator(annotation_lines, batch_size, num_classes=2, is_train=True):
 
         arr = [image_data, _one_hot(label_data), weight_data]
 
-        yield image_data, _one_hot(label_data)
+        yield image_data, label_data.astype(np.float32)
 
 
 if __name__ == '__main__':
