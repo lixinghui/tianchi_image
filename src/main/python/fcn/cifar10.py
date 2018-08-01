@@ -27,19 +27,20 @@ parser.add_argument('--data_path', help='data path string', type=str,
                     default="/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/bc")
 args = parser.parse_args()
 
-x_train = np.load("/tmp/x.npy")
-y_train = np.load("/tmp/y.npy")
-print('x_train shape:', x_train.shape)
-print(x_train.shape[0], 'train samples')
+# x_train = np.load("/tmp/x.npy")
+# y_train = np.load("/tmp/y.npy")
+# print('x_train shape:', x_train.shape)
+# print(x_train.shape[0], 'train samples')
 # print(x_test.shape[0], 'test samples')
 
 # Convert class vectors to binary class matrices.
 # y_train = keras.utils.to_categorical(y_train, num_classes)
 # y_test = keras.utils.to_categorical(y_test, num_classes)
 
+target_size = (128,128)
 model = Sequential()
 model.add(Conv2D(32, (3, 3), padding='same',
-                 input_shape=x_train.shape[1:]))
+                 input_shape=(target_size[0],target_size[1],3)))
 model.add(Activation('relu'))
 model.add(Conv2D(32, (3, 3)))
 model.add(Activation('relu'))
@@ -69,19 +70,18 @@ model.compile(loss='categorical_crossentropy',
               optimizer=opt,
               metrics=['accuracy'])
 
-x_train = x_train.astype('float32')
+# x_train = x_train.astype('float32')
 # x_test = x_test.astype('float32')
-x_train /= 255
+# x_train /= 255
 # x_test /= 255
 
-target_size = (128,128)
 if not data_augmentation:
     print('Not using data augmentation.')
-    model.fit(x_train[:10], y_train[:10],
-              batch_size=batch_size,
-              epochs=epochs,
-              validation_data=(x_train[:10], y_train[:10]),
-              shuffle=True)
+    # model.fit(x_train[:10], y_train[:10],
+    #           batch_size=batch_size,
+    #           epochs=epochs,
+    #           validation_data=(x_train[:10], y_train[:10]),
+    #           shuffle=True)
 else:
     print('Using real-time data augmentation.')
     # This will do preprocessing and realtime data augmentation:
@@ -147,6 +147,6 @@ model.save(model_path)
 print('Saved trained model at %s ' % model_path)
 
 # Score trained model.
-scores = model.evaluate(x_train, y_train, verbose=1)
-print('Test loss:', scores[0])
-print('Test accuracy:', scores[1])
+# scores = model.evaluate(x_train, y_train, verbose=1)
+# print('Test loss:', scores[0])
+# print('Test accuracy:', scores[1])
