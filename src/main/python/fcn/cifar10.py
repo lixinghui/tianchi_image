@@ -12,6 +12,8 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
+
+from keras import backend as K, Input, Model
 import os
 import numpy as np
 import tensorflow as tf
@@ -45,7 +47,8 @@ batch_size = args.batch_size
 # y_test = keras.utils.to_categorical(y_test, num_classes)
 
 
-target_size = (197,197)
+target_size = (128,128)
+# target_size = (197,197)
 
 
 def create_model():
@@ -106,9 +109,24 @@ def create_resnet():
 
     return Model(input=vgg.input, output=model(vgg.output))
 
+def create_darknet(num_classes=2):
+
+    input_shape = (target_size[0], target_size[1], 3)
+    from fcn.model1 import darknet_6
+    input_tensor = Input(input_shape)
+    base_model = darknet_6(input_tensor)
+
+    model = Sequential()
+    model.add(Flatten(input_shape=(1,1,256)))
+    model.add(Dense(num_classes))
+    model.add(Activation('softmax'))
+
+    return Model(inputs=[input_tensor], outputs=[model(base_model)])
+
 with tf.device("/cpu:0"):
     # model = create_model()
-    model = create_resnet50()
+    # model = create_resnet50()
+    model = create_darknet(2)
 
 model = multi_gpu_model(model,gpus=[0,1])
 
