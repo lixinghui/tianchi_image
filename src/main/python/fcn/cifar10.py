@@ -27,6 +27,7 @@ parser.add_argument('--data_path', help='data path string', type=str,
                     default="/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/bc")
 parser.add_argument('--batch_size', help='log dir ', type=int,
                     default=1)
+
 args = parser.parse_args()
 
 
@@ -145,7 +146,8 @@ else:
         ),
         epochs=epochs,
         # validation_data=(x_train[:10], y_train[:10]),
-        workers=4)
+        workers=batch_size//
+                4)
 
 
     # model.fit_generator(datagen.flow(x_train[:10], y_train[:10],
