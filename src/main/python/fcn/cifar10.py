@@ -6,7 +6,7 @@ It gets to 75% validation accuracy in 25 epochs, and 79% after 50 epochs.
 from __future__ import print_function
 import keras
 from keras import Model
-from keras.applications import VGG16
+from keras.applications import resnet50
 from keras.datasets import cifar10
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
@@ -45,7 +45,7 @@ batch_size = args.batch_size
 # y_test = keras.utils.to_categorical(y_test, num_classes)
 
 
-target_size = (128,128)
+target_size = (197,197)
 
 
 def create_model():
@@ -74,8 +74,24 @@ def create_model():
 
     return model
 
-def create_vgg():
+def create_resnet50():
+    #not useful
+    input_shape = (target_size[0], target_size[1], 3)
+    vgg = resnet50.ResNet50(include_top=False, weights=None, input_shape=input_shape)
 
+    model = Sequential()
+    model.add(Flatten(input_shape=vgg.output_shape[1:]))
+    model.add(Dense(512))
+    model.add(Activation('relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(num_classes))
+    model.add(Activation('softmax'))
+
+
+    return Model(input=vgg.input, output=model(vgg.output))
+
+def create_resnet():
+    #not useful
     input_shape = (target_size[0], target_size[1], 3)
     vgg = VGG16(include_top=False, weights=None, input_shape=input_shape)
 
@@ -88,11 +104,11 @@ def create_vgg():
     model.add(Activation('softmax'))
 
 
-    return Model(vgg.input, output=model(vgg.output))
+    return Model(input=vgg.input, output=model(vgg.output))
 
 with tf.device("/cpu:0"):
     # model = create_model()
-    model = create_vgg()
+    model = create_resnet50()
 
 model = multi_gpu_model(model,gpus=[0,1])
 
