@@ -92,7 +92,8 @@ def create_vgg():
     return Model(model.input, x)
 
 with tf.device("/cpu:0"):
-    model = create_model()
+    # model = create_model()
+    model = create_vgg()
 
 model = multi_gpu_model(model,gpus=[0,1])
 
