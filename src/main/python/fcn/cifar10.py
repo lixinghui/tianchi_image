@@ -75,18 +75,19 @@ def create_model():
     return model
 
 def create_vgg():
-    model = Sequential()
+
     input_shape = (target_size[0], target_size[1], 3)
     vgg = VGG16(include_top=False, weights=None, input_shape=input_shape)
 
-    model.add(vgg.output)
-    model.add(Flatten())
+    model = Sequential()
+    model.add(Flatten(input_shape=vgg.output_shape[1:]))
     model.add(Dense(512))
     model.add(Activation('relu'))
     model.add(Dropout(0.5))
     model.add(Dense(num_classes))
     model.add(Activation('softmax'))
 
+    vgg.add(model)
     return model
 
 with tf.device("/cpu:0"):
