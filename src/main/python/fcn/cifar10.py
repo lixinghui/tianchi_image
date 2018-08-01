@@ -146,8 +146,7 @@ else:
         ),
         epochs=epochs,
         # validation_data=(x_train[:10], y_train[:10]),
-        workers=batch_size//
-                4)
+        workers=batch_size//2)
 
 
     # model.fit_generator(datagen.flow(x_train[:10], y_train[:10],
