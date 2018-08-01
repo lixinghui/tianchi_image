@@ -12,7 +12,8 @@ from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 import os
 import numpy as np
-
+import tensorflow as tf
+from keras.utils.training_utils import multi_gpu_model
 
 num_classes = 2
 epochs = 200
@@ -40,29 +41,40 @@ batch_size = args.batch_size
 # y_train = keras.utils.to_categorical(y_train, num_classes)
 # y_test = keras.utils.to_categorical(y_test, num_classes)
 
+
 target_size = (128,128)
-model = Sequential()
-model.add(Conv2D(32, (3, 3), padding='same',
-                 input_shape=(target_size[0],target_size[1],3)))
-model.add(Activation('relu'))
-model.add(Conv2D(32, (3, 3)))
-model.add(Activation('relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.25))
 
-model.add(Conv2D(64, (3, 3), padding='same'))
-model.add(Activation('relu'))
-model.add(Conv2D(64, (3, 3)))
-model.add(Activation('relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.25))
 
-model.add(Flatten())
-model.add(Dense(512))
-model.add(Activation('relu'))
-model.add(Dropout(0.5))
-model.add(Dense(num_classes))
-model.add(Activation('softmax'))
+def create_model():
+    model = Sequential()
+    model.add(Conv2D(32, (3, 3), padding='same',
+                     input_shape=(target_size[0], target_size[1], 3)))
+    model.add(Activation('relu'))
+    model.add(Conv2D(32, (3, 3)))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.25))
+
+    model.add(Conv2D(64, (3, 3), padding='same'))
+    model.add(Activation('relu'))
+    model.add(Conv2D(64, (3, 3)))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.25))
+
+    model.add(Flatten())
+    model.add(Dense(512))
+    model.add(Activation('relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(num_classes))
+    model.add(Activation('softmax'))
+
+    return model
+
+with tf.device("/cpu:0"):
+    model = create_model()
+
+model = multi_gpu_model(model,gpus=[0,1])
 
 # initiate RMSprop optimizer
 # opt = keras.optimizers.rmsprop(lr=0.0001, decay=1e-6)
