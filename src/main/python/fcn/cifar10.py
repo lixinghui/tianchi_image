@@ -5,6 +5,8 @@ It gets to 75% validation accuracy in 25 epochs, and 79% after 50 epochs.
 
 from __future__ import print_function
 import keras
+from keras import Model
+from keras.applications import VGG16
 from keras.datasets import cifar10
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
@@ -71,6 +73,23 @@ def create_model():
     model.add(Activation('softmax'))
 
     return model
+
+def create_vgg():
+    input_shape = (target_size[0], target_size[1], 3)
+    model = VGG16(include_top=False, weights=None, input_shape=input_shape)
+
+    model.add(Flatten())
+    model.add(Dense(512))
+    model.add(Activation('relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(num_classes))
+    model.add(Activation('softmax'))
+
+    x = Flatten()(model.output)
+    x = Dense(512, activation='relu')(x)
+    x = Dense(num_classes, activation='softmax')(x)
+
+    return Model(model.input, x)
 
 with tf.device("/cpu:0"):
     model = create_model()
