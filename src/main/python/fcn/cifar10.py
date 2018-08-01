@@ -78,13 +78,6 @@ def create_vgg():
     input_shape = (target_size[0], target_size[1], 3)
     model = VGG16(include_top=False, weights=None, input_shape=input_shape)
 
-    model.add(Flatten())
-    model.add(Dense(512))
-    model.add(Activation('relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(num_classes))
-    model.add(Activation('softmax'))
-
     x = Flatten()(model.output)
     x = Dense(512, activation='relu')(x)
     x = Dense(num_classes, activation='softmax')(x)
