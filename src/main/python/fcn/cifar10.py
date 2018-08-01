@@ -87,8 +87,8 @@ def create_vgg():
     model.add(Dense(num_classes))
     model.add(Activation('softmax'))
 
-    vgg.add(model)
-    return model
+
+    return Model(vgg.input, output=model(vgg.output))
 
 with tf.device("/cpu:0"):
     # model = create_model()
