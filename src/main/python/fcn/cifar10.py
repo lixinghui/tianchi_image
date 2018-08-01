@@ -14,7 +14,6 @@ import os
 import numpy as np
 
 
-batch_size = 32
 num_classes = 2
 epochs = 200
 data_augmentation = True
@@ -25,8 +24,12 @@ import argparse as ap
 parser = ap.ArgumentParser()
 parser.add_argument('--data_path', help='data path string', type=str,
                     default="/Users/huanghaihun/PycharmProjects/come_on_leg_man/data/bc")
+parser.add_argument('--batch_size', help='log dir ', type=int,
+                    default=1)
 args = parser.parse_args()
 
+
+batch_size = args.batch_size
 # x_train = np.load("/tmp/x.npy")
 # y_train = np.load("/tmp/y.npy")
 # print('x_train shape:', x_train.shape)
