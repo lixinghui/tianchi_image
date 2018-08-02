@@ -204,8 +204,8 @@ model.compile(loss='categorical_crossentropy',
               optimizer=opt,
               metrics=['accuracy', auc_roc])
 
-model.save_weights("/tmp/test")
-model.load_weights("/tmp/test")
+# model.save_weights("/tmp/test")
+# model.load_weights("/tmp/test")
 # x_train = x_train.astype('float32')
 # x_test = x_test.astype('float32')
 # x_train /= 255
