@@ -183,7 +183,7 @@ with tf.device("/cpu:0"):
     # model = create_model()
     # model = create_resnet50()
     # model = create_darknet(2)
-    model = create_model256()
+    model = create_model128()
 
 # model = multi_gpu_model(model, gpus=[0, 1])
 
