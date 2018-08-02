@@ -6,7 +6,7 @@ It gets to 75% validation accuracy in 25 epochs, and 79% after 50 epochs.
 from __future__ import print_function
 import keras
 from keras import Model
-from keras.applications import resnet50
+from keras.applications import resnet50,densenet
 from keras.datasets import cifar10
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
@@ -153,6 +153,21 @@ def create_resnet50():
     model.add(Activation('softmax'))
 
     return Model(input=vgg.input, output=model(vgg.output))
+
+def create_resnet50():
+    # not useful
+    input_shape = (target_size[0], target_size[1], 3)
+    base_model = densenet.DenseNet121(False, input_shape, pooling='selu')
+
+    model = Sequential()
+    model.add(Flatten(input_shape=base_model.output_shape[1:]))
+    model.add(Dense(512))
+    model.add(Activation('relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(num_classes))
+    model.add(Activation('softmax'))
+
+    return Model(input=base_model.input, output=model(base_model.output))
 
 
 def create_resnet():
