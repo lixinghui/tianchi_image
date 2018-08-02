@@ -187,10 +187,10 @@ def create_darknet(num_classes=2):
 
 with tf.device("/cpu:0"):
     # model = create_model()
-    # model = create_resnet50()
+    model = create_resnet50()
     # model = create_darknet(2)
     model_path = args.model_tag
-    model = create_model256()
+    # model = create_model256()
     # model = create_model128()
     if tf.gfile.Exists(model_path):
         model.load_weights(model_path)
