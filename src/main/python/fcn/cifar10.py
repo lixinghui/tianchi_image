@@ -261,8 +261,8 @@ else:
     checkpoint = MultiGPUCheckpointCallback(args.log_dir + '/ep{epoch:03d}-loss{loss:.3f}-auc_roc{auc_roc:.3f}.h5',
                                             model,
                                             monitor='val_loss', save_weights_only=True, save_best_only=True, period=3)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1)
-    early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=100, verbose=1)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1, min_lr=1e-6)
+    early_stopping = EarlyStopping(monitor='val_auc_roc', min_delta=0, patience=100, verbose=1)
 
     g_train = datagen.flow_from_directory(
         args.data_path,
