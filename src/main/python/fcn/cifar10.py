@@ -51,7 +51,7 @@ target_size = (128,128)
 # target_size = (197,197)
 
 
-def create_model():
+def create_model128():
     model = Sequential()
     model.add(Conv2D(32, (3, 3), padding='same',
                      input_shape=(target_size[0], target_size[1], 3)))
@@ -67,6 +67,39 @@ def create_model():
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
+
+    model.add(Flatten())
+    model.add(Dense(512))
+    model.add(Activation('relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(num_classes))
+    model.add(Activation('softmax'))
+
+    return model
+
+def create_model256():
+    model = Sequential()
+    model.add(Conv2D(32, (3, 3), padding='same',
+                     input_shape=(target_size[0], target_size[1], 3)))
+    model.add(Activation('relu'))
+    model.add(Conv2D(32, (3, 3)))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(Dropout(0.25))
+
+    model.add(Conv2D(64, (3, 3), padding='same'))
+    model.add(Activation('relu'))
+    model.add(Conv2D(64, (3, 3)))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(Dropout(0.25))
+
+    model.add(Conv2D(64, (3, 3), padding='same'))
+    model.add(Activation('relu'))
+    model.add(Conv2D(64, (3, 3)))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(Dropout(0.25))
 
     model.add(Flatten())
     model.add(Dense(512))
@@ -126,7 +159,8 @@ def create_darknet(num_classes=2):
 with tf.device("/cpu:0"):
     # model = create_model()
     # model = create_resnet50()
-    model = create_darknet(2)
+    # model = create_darknet(2)
+    model = create_model256()
 
 model = multi_gpu_model(model,gpus=[0,1])
 
