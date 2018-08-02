@@ -249,9 +249,9 @@ else:
 
     logging = TensorBoard(log_dir=args.log_dir)
     checkpoint = ModelCheckpoint(args.log_dir + '/ep{epoch:03d}-loss{loss:.3f}-auc_roc{auc_roc:.3f}.h5',
-                                 monitor='auc_roc', save_weights_only=True, save_best_only=True, period=3)
-    reduce_lr = ReduceLROnPlateau(monitor='auc_roc', factor=0.8, patience=3, verbose=1)
-    early_stopping = EarlyStopping(monitor='auc_roc', min_delta=0, patience=50, verbose=1)
+                                 monitor='val_loss', save_weights_only=True, save_best_only=True, period=3)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.8, patience=3, verbose=1)
+    early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=50, verbose=1)
 
     g_train = datagen.flow_from_directory(
         args.data_path,
