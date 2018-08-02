@@ -25,7 +25,7 @@ epochs = 200
 data_augmentation = True
 num_predictions = 20
 save_dir = os.path.join(os.getcwd(), 'saved_models')
-model_name = 'keras_cifar10_trained_model.h5'
+
 import argparse as ap
 
 parser = ap.ArgumentParser()
@@ -35,8 +35,11 @@ parser.add_argument('--batch_size', help='batch_size ', type=int,
                     default=1)
 parser.add_argument('--log_dir', help='log dir ', type=str,
                     default='output')
+parser.add_argument('--model_tag', help='log dir ', type=str,
+                    default='output')
 args = parser.parse_args()
 
+model_name = 'keras_{}_trained_model.h5'.format(args.model_tag)
 batch_size = args.batch_size
 # x_train = np.load("/tmp/x.npy")
 # y_train = np.load("/tmp/y.npy")
@@ -70,6 +73,8 @@ def auc_roc(y_true, y_pred):
     with tf.control_dependencies([update_op]):
         value = tf.identity(value)
         return value
+
+
 
 
 def create_model128():
@@ -183,8 +188,9 @@ with tf.device("/cpu:0"):
     # model = create_model()
     # model = create_resnet50()
     # model = create_darknet(2)
+    model_path = os.path.join(save_dir, model_name)
     model = create_model128()
-
+    model.load_weights(model_path)
 model = multi_gpu_model(model, gpus=[0, 1])
 
 # initiate RMSprop optimizer
@@ -250,8 +256,8 @@ else:
     logging = TensorBoard(log_dir=args.log_dir)
     checkpoint = ModelCheckpoint(args.log_dir + '/ep{epoch:03d}-loss{loss:.3f}-auc_roc{auc_roc:.3f}.h5',
                                  monitor='val_loss', save_weights_only=True, save_best_only=True, period=3)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.8, patience=3, verbose=1)
-    early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=50, verbose=1)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1)
+    early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=100, verbose=1)
 
     g_train = datagen.flow_from_directory(
         args.data_path,
