@@ -185,7 +185,7 @@ with tf.device("/cpu:0"):
     # model = create_darknet(2)
     model = create_model128()
 
-# model = multi_gpu_model(model, gpus=[0, 1])
+model = multi_gpu_model(model, gpus=[0, 1])
 
 # initiate RMSprop optimizer
 # opt = keras.optimizers.rmsprop(lr=0.0001, decay=1e-6)
@@ -275,7 +275,7 @@ else:
                         validation_steps=6,
                         callbacks=[logging, checkpoint, reduce_lr, early_stopping],
                         # validation_data=(x_train[:10], y_train[:10]),
-                        workers=batch_size // 2)
+                        workers=batch_size // 4)
 
     # model.fit_generator(datagen.flow(x_train[:10], y_train[:10],
     #                                  batch_size=4),
