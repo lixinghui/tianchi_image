@@ -188,7 +188,7 @@ with tf.device("/cpu:0"):
     # model = create_model()
     # model = create_resnet50()
     # model = create_darknet(2)
-    model_path = os.path.join(save_dir, model_name)
+    model_path = args.model_tag
     model = create_model128()
     model.load_weights(model_path)
 model = multi_gpu_model(model, gpus=[0, 1])
