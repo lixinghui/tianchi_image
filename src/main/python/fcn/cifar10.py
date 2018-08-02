@@ -77,8 +77,6 @@ def auc_roc(y_true, y_pred):
         return value
 
 
-
-
 def create_model128():
     model = Sequential()
     model.add(Conv2D(32, (3, 3), padding='same',
@@ -195,7 +193,7 @@ with tf.device("/cpu:0"):
     if tf.gfile.Exists(model_path):
         model.load_weights(model_path)
 
-# model = multi_gpu_model(model, gpus=[0, 1])
+model = multi_gpu_model(model, gpus=[0, 1])
 
 # initiate RMSprop optimizer
 # opt = keras.optimizers.rmsprop(lr=0.0001, decay=1e-6)
@@ -261,7 +259,8 @@ else:
 
     logging = TensorBoard(log_dir=args.log_dir)
     checkpoint = MultiGPUCheckpointCallback(args.log_dir + '/ep{epoch:03d}-loss{loss:.3f}-auc_roc{auc_roc:.3f}.h5',
-                                 monitor='val_loss', save_weights_only=True, save_best_only=True, period=3)
+                                            model,
+                                            monitor='val_loss', save_weights_only=True, save_best_only=True, period=3)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1)
     early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=100, verbose=1)
 
