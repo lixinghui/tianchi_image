@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 from keras.utils.training_utils import multi_gpu_model
 
-from fcn.save_util import MultiGPUCheckpointCallback
+from save_util import MultiGPUCheckpointCallback
 
 num_classes = 2
 epochs = 200
